@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A browser party game in the style of Cards Against Humanity, with developer-themed cards. Runs entirely in the browser.">
+<title>Commits Against Humanity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a dotted "table" where the prompt card sits beside the face-down pile; contributors + git log on the right; your hand in a tray below. */
+:root {
+  --bg: #ecf0ed; --surface: #f8faf8; --fg: #16201a; --muted: #56645b; --line: #d0d9d3;
+  --accent: #1c8247; --accent-ink: #ffffff; --accent-soft: #d3efdc; --del: #bd3838;
+  --g0: #dde5df; --g1: #a3e2b8; --g2: #52bf7e; --g3: #258f53; --g4: #135d35;
+  --ink-black: #111413; --on-black: #f4f6f4; --ink-white: #fcfcf9; --on-white: #141615;
+  --meta-black: #8a938d; --meta-white: #7b847e; --fill-on-black: #8ee4aa;
+  --card-edge: rgba(15, 30, 20, .14); --shadow: rgba(15, 30, 20, .45); --dot: #c9d3cc;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1210; --surface: #141b17; --fg: #e1e9e4; --muted: #8b998f; --line: #25302a;
+    --accent: #3cba6f; --accent-ink: #04120a; --accent-soft: #183b27; --del: #e26b6b;
+    --g0: #1d2722; --g1: #0f472b; --g2: #0a6e36; --g3: #27a446; --g4: #3fd45c;
+    --ink-black: #040605; --card-edge: rgba(255, 255, 255, .13); --shadow: rgba(0, 0, 0, .8); --dot: #1f2924;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1210; --surface: #141b17; --fg: #e1e9e4; --muted: #8b998f; --line: #25302a;
+  --accent: #3cba6f; --accent-ink: #04120a; --accent-soft: #183b27; --del: #e26b6b;
+  --g0: #1d2722; --g1: #0f472b; --g2: #0a6e36; --g3: #27a446; --g4: #3fd45c;
+  --ink-black: #040605; --card-edge: rgba(255, 255, 255, .13); --shadow: rgba(0, 0, 0, .8); --dot: #1f2924;
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--fg); font-family: var(--display); font-size: 15px; line-height: 1.5; }
+.mono { font-family: var(--mono); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.app {
+  max-width: 1180px; margin: 0 auto; display: grid; gap: 18px;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+.brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.logo {
+  flex: none; width: 46px; height: 46px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--ink-black); border: 1px solid var(--card-edge);
+  font-family: var(--mono); font-weight: 600; font-size: 15px; letter-spacing: -.04em;
+}
+.logo .plus { color: var(--fill-on-black); } .logo .minus { color: #ff8f8f; }
+h1 { margin: 0; font-size: clamp(20px, 3.2vw, 28px); font-weight: 800; letter-spacing: -.025em; line-height: 1.1; text-wrap: balance; }
+.sub { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+.top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11.5px;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+}
+
+.btn {
+  font-weight: 700; font-size: 14px; padding: 10px 16px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  transition: transform .12s ease, background .12s ease;
+}
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Setup */
+.setup {
+  display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: end;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px;
+}
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.field input, .field select {
+  font: inherit; font-size: 15px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--fg); min-width: 0; max-width: 100%;
+}
+.field input { width: 200px; }
+.setup-actions { display: flex; gap: 8px; margin-left: auto; }
+
+/* Board */
+.board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); gap: 18px; align-items: start; }
+@media (max-width: 840px) { .board { grid-template-columns: minmax(0, 1fr); } }
+
+.stage {
+  display: grid; gap: 16px; padding: 20px; border-radius: 16px; border: 1px solid var(--line); min-width: 0;
+  background-color: var(--surface);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+}
+.status { font-size: 16.5px; font-weight: 500; line-height: 1.45; min-height: 2.9em; max-width: 60ch; text-wrap: pretty; }
+.status strong { font-weight: 800; }
+.stage-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+
+/* Cards */
+.card { border-radius: 14px; border: 1px solid var(--card-edge); box-shadow: 0 10px 22px -16px var(--shadow); text-align: left; }
+.card-text { overflow-wrap: anywhere; }
+.card-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10.5px; font-weight: 400; letter-spacing: .02em; }
+
+.card.black {
+  width: min(100%, 340px); min-height: 300px; padding: 22px 22px 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 20px;
+  background: var(--ink-black); color: var(--on-black);
+}
+.card.black .card-text { margin: 0; font-size: clamp(20px, 2.6vw, 25px); font-weight: 800; line-height: 1.25; letter-spacing: -.01em; }
+.card.black .card-meta { color: var(--meta-black); }
+.card.black mark { background: none; color: var(--fill-on-black); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.blank { display: inline-block; width: 3.4em; height: .9em; border-bottom: 3px solid currentColor; vertical-align: baseline; }
+.pick { color: var(--on-black); border: 1px solid var(--meta-black); border-radius: 999px; padding: 1px 8px; text-transform: uppercase; letter-spacing: .08em; }
+.stage.fresh .card.black { animation: flip .45s cubic-bezier(.2, .8, .2, 1); }
+
+.card.white {
+  position: relative; min-height: 168px; padding: 14px 14px 12px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px;
+  background: var(--ink-white); color: var(--on-white); font-size: 16px; font-weight: 700; line-height: 1.25;
+}
+.card.white .card-meta { color: var(--meta-white); }
+button.card { cursor: pointer; transition: transform .14s ease, box-shadow .14s ease, outline-color .14s; outline: 3px solid transparent; outline-offset: 2px; }
+button.card:hover:not(:disabled) { transform: translateY(-4px); }
+button.card.selected { outline-color: var(--accent); transform: translateY(-6px); }
+button.card:disabled { cursor: default; opacity: .55; }
+.badge {
+  position: absolute; top: -9px; right: -9px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink); font-family: var(--mono); font-size: 12px; font-weight: 600;
+}
+
+/* Face-down pile */
+.pile { flex: 1 1 200px; min-width: 0; display: grid; gap: 10px; align-content: start; }
+.pile-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.slots { display: flex; flex-wrap: wrap; gap: 10px; }
+.slot { width: 86px; height: 120px; border-radius: 10px; border: 1.5px dashed var(--line); }
+.slot.down {
+  border: 1px solid var(--card-edge); background: var(--ink-white); color: var(--on-white); padding: 10px;
+  font-weight: 800; font-size: 12.5px; line-height: 1.1; letter-spacing: -.01em; box-shadow: 0 8px 18px -14px var(--shadow);
+  animation: drop .3s ease-out;
+}
+
+/* Side panel */
+.side { display: grid; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
+.eyebrow { margin: 0; font-family: var(--mono); font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.scores, .log { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.player {
+  display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; grid-template-areas: "av name state" "av graph pts";
+  gap: 4px 10px; align-items: center; padding: 8px; margin: -8px; border-radius: 10px;
+}
+.player.is-winner { background: var(--accent-soft); }
+.avatar { grid-area: av; width: 32px; height: 32px; border-radius: 7px; overflow: hidden; background: var(--g0); }
+.avatar svg { display: block; width: 100%; height: 100%; }
+.pname { grid-area: name; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pname em { font-style: normal; font-weight: 400; color: var(--muted); }
+.pstate { grid-area: state; }
+.pts { grid-area: pts; font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.graph { grid-area: graph; display: flex; flex-wrap: wrap; gap: 3px; }
+.cell { width: 11px; height: 11px; border-radius: 2.5px; background: var(--g0); outline: 1px solid var(--card-edge); outline-offset: -1px; }
+.cell.l1 { background: var(--g1); } .cell.l2 { background: var(--g2); } .cell.l3 { background: var(--g3); } .cell.l4 { background: var(--g4); }
+.chip.czar { background: var(--fg); color: var(--bg); border-color: transparent; }
+.chip.done { color: var(--accent); border-color: var(--accent); }
+.chip.won { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.dots::after { content: "…"; animation: blink 1.2s steps(4) infinite; }
+
+.log { gap: 8px; font-family: var(--mono); font-size: 12px; line-height: 1.45; }
+.log li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+.log .h { color: var(--accent); }
+.log .t { color: var(--muted); overflow-wrap: anywhere; }
+.log .t b { color: var(--fg); font-weight: 600; }
+.empty { color: var(--muted); font-size: 13px; }
+
+/* Tray */
+.tray { display: grid; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
+.tray-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.tray-head h2 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+.tray-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 14px; padding-top: 8px; }
+.tray.fresh .card.white { animation: deal .38s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+
+.subs { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.sub {
+  display: grid; gap: 8px; align-content: start; padding: 8px; border-radius: 16px; background: none;
+  border: 2px dashed transparent; text-align: left; cursor: default;
+}
+.sub.can-pick { cursor: pointer; }
+.sub.can-pick:hover { border-color: var(--line); }
+.sub.reading { border-color: var(--muted); }
+.sub.chosen, .sub.winner { border: 2px solid var(--accent); background: var(--accent-soft); }
+.sub .card.white { min-height: 128px; }
+.sub-by { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+@keyframes deal { from { opacity: 0; transform: translateY(18px) rotate(-2deg); } }
+@keyframes flip { from { opacity: 0; transform: perspective(800px) rotateY(-70deg); } }
+@keyframes drop { from { opacity: 0; transform: translateY(-14px) rotate(4deg); } }
+@keyframes blink { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "…"; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Base reset for standalone hosting */
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; } img { max-width: 100%; } [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><span class="plus">+</span><span class="minus">−</span></div>
+      <div>
+        <h1>Commits Against Humanity</h1>
+        <p class="sub">A party game for people who have been paged at 3 AM.</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span id="roundInfo" class="chip"></span>
+      <button id="newGameBtn" class="btn" type="button" aria-expanded="false" aria-controls="setup">New game</button>
+    </div>
+  </header>
+
+  <form id="setup" class="setup" hidden>
+    <div class="field">
+      <label for="nameInput">Your handle</label>
+      <input id="nameInput" name="name" maxlength="20" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="botsInput">Bot players</label>
+      <select id="botsInput" name="bots">
+        <option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="targetInput">Points to win</label>
+      <select id="targetInput" name="target">
+        <option value="3">3</option><option value="5">5</option><option value="7">7</option><option value="10">10</option>
+      </select>
+    </div>
+    <div class="setup-actions">
+      <button class="btn" type="button" data-act="cancel-setup">Cancel</button>
+      <button class="btn primary" type="submit">Deal new game</button>
+    </div>
+  </form>
+
+  <main class="board">
+    <section id="stage" class="stage" aria-live="polite">
+      <div id="status" class="status"></div>
+      <div class="stage-row">
+        <div id="blackCard" style="display:contents"></div>
+        <div id="pile" class="pile"></div>
+      </div>
+    </section>
+    <aside class="side">
+      <h2 class="eyebrow">Contributors</h2>
+      <ol id="scores" class="scores"></ol>
+      <h2 class="eyebrow">git log --oneline</h2>
+      <ol id="log" class="log"></ol>
+    </aside>
+  </main>
+
+  <section id="trayWrap" class="tray">
+    <div class="tray-head">
+      <div><h2 id="trayTitle"></h2><p id="trayHint"></p></div>
+      <div id="trayActions"></div>
+    </div>
+    <div id="tray"></div>
+  </section>
+</div>
+
+<script>
+const BLACK = [
+  "The CI pipeline is red again. Root cause: ____.",
+  "My pull request description just says ____.",
+  "git blame says this line was written by ____.",
+  "Breaking change in v2.0: we removed ____.",
+  "LGTM, ship it. The reviewer did not notice ____.",
+  "New section in the README: How to deal with ____.",
+  "The real reason we moved to a monorepo: ____.",
+  "My question was closed as a duplicate of ____.",
+  "Standup. Yesterday I worked on ____. Today I will work on ____.",
+  "Commit message: \"fix ____\".",
+  "Issue #4012: ____ does not work on Windows.",
+  "I force-pushed to main and now ____.",
+  "The intern's first PR replaced our auth system with ____.",
+  "The dependency bot just opened 47 pull requests about ____.",
+  "What is actually inside node_modules? ____.",
+  "Senior engineer tip: always ____ before ____.",
+  "Closed as won't fix: ____.",
+  "The only thing standing between us and production is ____.",
+  "Merge conflict between ____ and ____.",
+  "Our open source project is funded entirely by ____.",
+  "TODO: remove ____ before release.",
+  "The 10x engineer's secret: ____.",
+  "Star this repo for ____!",
+  "I rebased onto main and suddenly ____.",
+  "Hotfix deployed Friday at 4:59 PM: ____.",
+  "Code review comment: \"nit: ____\".",
+  "The LICENSE file just says ____.",
+  "It works on my machine because of ____.",
+  "My .gitignore ignores ____.",
+  "The postmortem blamed ____.",
+  "Our onboarding doc is 300 pages about ____.",
+  "Who approved ____?",
+  "Next sprint we will finally address ____.",
+  "git bisect found the bug. It was introduced by ____.",
+  "My contribution graph is solid green thanks to ____.",
+  "The CI config is 2,000 lines of YAML because of ____.",
+  "Step 1: ____. Step 2: ____. Step 3: Profit.",
+  "We deprecated ____ in favor of ____.",
+  "Revert \"Add ____\".",
+  "Please don't @ me about ____.",
+  "My entire shell history is just ____.",
+  "Release notes: bug fixes and ____.",
+  "The only test in the repo checks ____.",
+  "First-time contributor? Start with ____.",
+  "The secret token we committed was protecting ____.",
+  "The pull request was 400 files long and all of it was ____.",
+  "Labels: good first issue, help wanted, ____.",
+  "Our branch protection rules can be bypassed by ____."
+];
+
+const WHITE = [
+  "A 4,000-line PR titled \"small fix\"", "git push --force", "Merge branch 'main' into main", "node_modules",
+  "The intern", "The tabs vs. spaces holy war", "A YAML indentation error", "Leaked cloud keys", "Blaming the compiler",
+  "rm -rf /", "Spaghetti code", "A regex nobody understands", "Commenting out the failing test", "\"Works on my machine\"",
+  "Friday deployments", "A ticket from 2014", "Being unable to exit Vim", "An npm package with one line of code",
+  "left-pad", "Copy-pasting from a 2011 forum answer", "The CEO's nephew", "Kubernetes for a static blog", "Blockchain",
+  "A microservice for every function", "Rewriting it in Rust", "Technical debt", "A 3 AM pager alert",
+  "Semantic versioning lies", "A commit called \"asdf\"", "\"wip\"", "final_final_v2", "Detached HEAD state",
+  "A merge conflict in package-lock.json", "Hardcoded passwords", "console.log(\"here\")", "Yet another JavaScript framework",
+  "A bus factor of one", "A rubber duck", "Unpaid open source maintainers", "Someone's 20-year-old Perl script",
+  "Mass-closing stale issues", "A bot that comments \"bump\"", "Forty \"+1\" comments", "The person who asks \"any update?\"",
+  "undefined is not a function", "Off-by-one errors", "Infinite recursion", "The cloud bill", "Cache invalidation",
+  "Naming things", "Daylight saving time", "Time zones", "Unicode", "Emoji in variable names", "null",
+  "Monday morning standup", "A meeting that should have been an email", "Agile coaches", "Story points",
+  "The PM asking \"is it done yet?\"", "Scope creep", "A stale branch from 2019", "Dark mode", "A README that only says TODO",
+  "Unsigned commits", "GPG keys nobody remembers making", "Squash and merge", "Cherry-picking", "A rebase gone horribly wrong",
+  "git stash, forever", "The reflog, my only friend", "A merge commit with 47 parents", "A 2 GB binary committed to the repo",
+  ".DS_Store files", "Committing the .env file", "Secrets in plain text", "admin / admin", "SQL injection", "Little Bobby Tables",
+  "The legacy monolith", "COBOL", "AbstractSingletonProxyFactoryBean", "XML configuration", "Docker inside Docker inside Docker",
+  "An AI that writes all the bugs", "Autocomplete that knows too much", "Vibe coding", "Mechanical keyboard noises",
+  "A standing desk nobody stands at", "Free pizza instead of raises", "Hackathon energy drinks", "Imposter syndrome",
+  "The 10x engineer", "A thought leader on LinkedIn", "Premature optimization", "Dependency hell", "A circular dependency",
+  "Pinning everything to latest", "Breaking changes in a patch release", "A README screenshot from 2016", "A wall of failing badges",
+  "100% test coverage of nothing", "Flaky tests", "Re-running CI until it passes", "--no-verify", "A 45-minute CI pipeline",
+  "The build server under someone's desk", "A cron job nobody owns", "Production database access for everyone",
+  "DROP TABLE users;", "Testing in production", "A feature flag from 2017", "Logging every password", "Semicolons",
+  "Trailing whitespace", "A linter with 900 rules", "The formatter reformatting the entire repo", "My \"quick refactor\"",
+  "Rewriting everything from scratch", "An archived repository", "A fork with more stars than the original",
+  "Buying stars", "Begging for stars", "Spam PRs that fix one typo", "The CODEOWNERS file", "\"Changes requested\"",
+  "Approved with 37 comments", "Passive-aggressive code review", "Approving my own PR", "Admins bypassing branch protection",
+  "The one person who understands the build", "A senior engineer saying \"it depends\"", "Microservices that share one database",
+  "A 503 on launch day", "An error message that just says \"Error\"", "Exit code 137", "Segmentation fault (core dumped)",
+  "Lines of code as a productivity metric", "A two-week sprint that lasted six months", "Burnout", "A coffee-soaked laptop",
+  "printf debugging", "Sacrificing a goat to the build gods", "Turning it off and on again", "Clearing the cache",
+  "Hard-refreshing the browser 40 times", "localhost:3000", "Port 8080 already in use", "A Dockerfile that installs the whole internet",
+  "curl | sudo bash", "The yak I am currently shaving", "Writing my own version control", "A git alias for every word",
+  "Accidentally committing to main", "A 600-comment thread about a logo", "My dotfiles", "Stack traces in production",
+  "An unreviewed 2 AM merge", "The heat death of the universe", "A PDF of the API docs", "The staging server that is actually prod",
+  "Kernel panic", "A one-line fix that took three weeks", "The bug that only happens on Tuesdays", "Mocking the mocks"
+];
+
+const BOT_NAMES = ["lgtm_larry", "sudo_sam", "null_pointer", "yaml_yasmin", "rebase_rita", "force_push_fred", "cron_carla"];
+const HAND = 7;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fnv = s => { let h = 2166136261 >>> 0; for (const c of String(s)) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
+const sha = s => fnv(s).toString(16).padStart(8, "0").slice(0, 7);
+const blanks = t => (t.match(/____/g) || []).length;
+const trimDot = s => s.replace(/\.$/, "");
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let S = null, timer = null, lastKey = "";
+let prefs = loadPrefs();
+
+function loadPrefs() {
+  const d = { name: "you", bots: 3, target: 5 };
+  try { return Object.assign(d, JSON.parse(localStorage.getItem("cah-prefs") || "{}")); } catch { return d; }
+}
+function savePrefs() { try { localStorage.setItem("cah-prefs", JSON.stringify(prefs)); } catch {} }
+
+/* ---------- game state ---------- */
+function newGame({ name, bots, target }) {
+  clearTimeout(timer); timer = null;
+  name = String(name || "you").trim().replace(/^@+/, "").replace(/\s+/g, "_").slice(0, 20) || "you";
+  const botNames = shuffle(BOT_NAMES.filter(n => n !== name)).slice(0, bots);
+  S = {
+    players: [{ id: 0, name, bot: false, hand: [], score: 0 }, ...botNames.map((n, i) => ({ id: i + 1, name: n, bot: true, hand: [], score: 0 }))],
+    target, round: 0, czar: 0, black: null, phase: "pick",
+    subs: [], order: [], selected: [], czarPick: null, reading: -1, winner: null,
+    white: shuffle(WHITE), whiteDiscard: [], blacks: shuffle(BLACK), blackDiscard: [], log: []
+  };
+  startRound();
+}
+function drawWhite() { if (!S.white.length) { S.white = shuffle(S.whiteDiscard); S.whiteDiscard = []; } return S.white.pop(); }
+function drawBlack() { if (!S.blacks.length) { S.blacks = shuffle(S.blackDiscard); S.blackDiscard = []; } return S.blacks.pop(); }
+
+function startRound() {
+  if (S.black) S.blackDiscard.push(S.black);
+  S.round++;
+  S.czar = (S.czar + 1) % S.players.length;
+  S.black = drawBlack();
+  for (const p of S.players) while (p.hand.length < HAND) p.hand.push(drawWhite());
+  Object.assign(S, { phase: "pick", subs: [], order: [], selected: [], czarPick: null, reading: -1, winner: null });
+}
+const need = () => blanks(S.black);
+const submitted = id => S.subs.some(s => s.pid === id);
+function submit(pid, idxs) {
+  const p = S.players[pid];
+  S.subs.push({ pid, cards: idxs.map(i => p.hand[i]) });
+  p.hand = p.hand.filter((_, i) => !idxs.includes(i));
+}
+function botSubmit(p) { submit(p.id, shuffle(p.hand.map((_, i) => i)).slice(0, need())); }
+function award(k) {
+  const s = S.order[k], w = S.players[s.pid];
+  S.winner = s.pid; w.score++;
+  for (const x of S.subs) S.whiteDiscard.push(...x.cards);
+  S.log.unshift({ h: sha(S.round + s.cards.join() + Math.random()), who: w.name, what: s.cards.join(" / ") });
+  S.log = S.log.slice(0, 7);
+  S.phase = w.score >= S.target ? "over" : "result";
+}
+
+/* Bots act on timers; drive() looks at the state and schedules whatever is due next. */
+function later(fn, ms) {
+  clearTimeout(timer);
+  timer = setTimeout(() => { timer = null; fn(); render(); drive(); }, reduced ? Math.min(ms, 250) : ms);
+}
+function drive() {
+  if (!S) return;
+  if (S.phase === "pick") {
+    const next = S.players.find((p, i) => p.bot && i !== S.czar && !submitted(p.id));
+    if (next) return later(() => botSubmit(next), 500 + Math.random() * 1000);
+    if (S.players.every((p, i) => i === S.czar || submitted(p.id))) {
+      later(() => { S.order = shuffle(S.subs); S.phase = "judge"; S.reading = -1; }, 450);
+    }
+  } else if (S.phase === "judge" && S.players[S.czar].bot) {
+    if (S.reading < S.order.length - 1) return later(() => { S.reading++; }, S.reading < 0 ? 500 : 1300);
+    later(() => award(Math.floor(Math.random() * S.order.length)), 1300);
+  }
+}
+
+/* ---------- rendering ---------- */
+function identicon(seed) {
+  const h = fnv(seed), hue = h % 360;
+  let r = "";
+  for (let y = 0; y < 5; y++) for (let x = 0; x < 3; x++) {
+    if ((h >> (y * 3 + x)) & 1) {
+      r += `<rect x="${x}" y="${y}" width="1" height="1"/>`;
+      if (x < 2) r += `<rect x="${4 - x}" y="${y}" width="1" height="1"/>`;
+    }
+  }
+  return `<svg viewBox="-0.5 -0.5 6 6" aria-hidden="true"><g fill="hsl(${hue} 55% 48%)">${r}</g></svg>`;
+}
+
+function blackCard(text, cards) {
+  let i = 0;
+  const body = esc(text).replace(/____/g, () => {
+    const c = cards && cards[i++];
+    return c ? `<mark>${esc(trimDot(c))}</mark>` : `<span class="blank" role="img" aria-label="blank"></span>`;
+  });
+  const n = blanks(text);
+  return `<article class="card black"><p class="card-text">${body}</p>
+    <footer class="card-meta"><span>issue #${fnv(text) % 9000 + 1000}</span>${n > 1 ? `<span class="pick">Pick ${n}</span>` : ""}</footer></article>`;
+}
+function whiteCard(text, { tag = "div", attrs = "", badge = "", cls = "", i = 0 } = {}) {
+  return `<${tag} class="card white ${cls}" style="--i:${i}" ${attrs}><span class="card-text">${esc(text)}</span>
+    <span class="card-meta"><span>${sha(text)}</span></span>${badge}</${tag}>`;
+}
+const at = p => `<strong>@${esc(p.name)}</strong>`;
+
+function render() {
+  const me = S.players[0], czar = S.players[S.czar], n = need();
+  const iAmCzar = S.czar === 0, phase = S.phase;
+  const key = S.round + phase;
+  const fresh = key !== lastKey; lastKey = key;
+
+  $("roundInfo").textContent = `Round ${S.round} · first to ${S.target}`;
+
+  /* black card, previewing whatever is being considered */
+  let fill = null;
+  if (phase === "pick" && !iAmCzar) fill = S.selected.map(i => me.hand[i]);
+  else if (phase === "judge") fill = iAmCzar ? (S.czarPick != null ? S.order[S.czarPick].cards : null) : (S.reading >= 0 ? S.order[S.reading].cards : null);
+  else if (phase === "result" || phase === "over") fill = S.order.find(s => s.pid === S.winner).cards;
+  const stage = $("stage");
+  stage.classList.toggle("fresh", fresh && (phase === "pick"));
+  $("blackCard").innerHTML = blackCard(S.black, fill);
+
+  /* status line */
+  let status = "";
+  const waiting = S.players.filter((p, i) => i !== S.czar && !submitted(p.id));
+  if (phase === "pick") {
+    if (iAmCzar) status = `You are the Card Czar this round. Everyone else is picking ${n === 1 ? "a card" : "2 cards"}; you choose the winner.`;
+    else if (!submitted(0)) status = `Pick ${n === 1 ? "a card" : "2 cards, in order,"} to complete the prompt. ${at(czar)} is judging this round.`;
+    else status = `Submitted. Waiting on ${waiting.map(at).join(", ")}.`;
+  } else if (phase === "judge") {
+    status = iAmCzar ? `All submissions are in. Read each one against the prompt and pick the funniest.` : `${at(czar)} is reviewing the submissions<span class="dots"></span>`;
+  } else if (phase === "result") {
+    const w = S.players[S.winner];
+    status = S.winner === 0 ? `${at(czar)} merged your commit. You get a point.` : `${iAmCzar ? "You" : at(czar)} merged ${at(w)}'s commit. +1 to ${at(w)}.`;
+  } else {
+    const w = S.players[S.winner];
+    status = S.winner === 0 ? `You reached ${S.target} points and won the game. Ship it.` : `${at(w)} reached ${S.target} points and won the game.`;
+  }
+  $("status").innerHTML = status;
+
+  /* face-down pile during picking */
+  if (phase === "pick") {
+    const slots = S.players.map((p, i) => i === S.czar ? "" : submitted(p.id)
+      ? `<div class="slot down">Commits Against Humanity</div>` : `<div class="slot" aria-hidden="true"></div>`).join("");
+    $("pile").innerHTML = `<div class="pile-label">${S.subs.length} of ${S.players.length - 1} pushed</div><div class="slots">${slots}</div>`;
+  } else {
+    $("pile").innerHTML = "";
+  }
+
+  /* scoreboard */
+  $("scores").innerHTML = S.players.map((p, i) => {
+    let chip = "";
+    const won = S.winner === p.id && phase !== "pick" && phase !== "judge";
+    if (won) chip = `<span class="chip won">${phase === "over" ? "winner" : "merged"}</span>`;
+    else if (i === S.czar) chip = `<span class="chip czar">czar</span>`;
+    else if (phase === "pick") chip = submitted(p.id) ? `<span class="chip done">pushed</span>` : `<span class="chip">${p.bot ? `thinking<span class="dots"></span>` : "your move"}</span>`;
+    const cells = Array.from({ length: S.target }, (_, k) => `<span class="cell ${k < p.score ? "l" + Math.min(4, 1 + Math.floor(k * 4 / S.target)) : ""}"></span>`).join("");
+    return `<li class="player ${won ? "is-winner" : ""}">
+      <span class="avatar">${identicon(p.name)}</span>
+      <span class="pname">@${esc(p.name)}${i === 0 ? " <em>(you)</em>" : ""}</span>
+      <span class="pstate">${chip}</span>
+      <span class="graph" role="img" aria-label="${p.score} of ${S.target} points">${cells}</span>
+      <span class="pts">${p.score}/${S.target}</span></li>`;
+  }).join("");
+
+  $("log").innerHTML = S.log.length
+    ? S.log.map(l => `<li><span class="h">${l.h}</span><span class="t"><b>@${esc(l.who)}</b> ${esc(l.what)}</span></li>`).join("")
+    : `<li class="empty">No merges yet. Winning cards land here.</li>`;
+
+  /* tray: hand while picking, submissions while judging */
+  const tray = $("tray"), wrap = $("trayWrap");
+  wrap.classList.toggle("fresh", fresh);
+  let title, hint = "", action = "";
+  if (phase === "pick") {
+    title = "Your hand";
+    const locked = iAmCzar || submitted(0);
+    if (iAmCzar) hint = "You sit this one out while you judge.";
+    else if (submitted(0)) hint = "Your card is in. New cards are dealt at the start of the next round.";
+    else hint = n === 1 ? "Tap a card to preview it on the prompt." : "Tap two cards in the order they should fill the blanks.";
+    tray.className = "cards";
+    tray.innerHTML = me.hand.map((c, i) => {
+      const pos = S.selected.indexOf(i);
+      return whiteCard(c, {
+        tag: "button", i, cls: pos >= 0 ? "selected" : "",
+        attrs: `type="button" data-hand="${i}" aria-pressed="${pos >= 0}" ${locked ? "disabled" : ""}`,
+        badge: pos >= 0 && n > 1 ? `<span class="badge">${pos + 1}</span>` : ""
+      });
+    }).join("");
+    if (!locked) action = `<button class="btn primary" type="button" data-act="submit" ${S.selected.length === n ? "" : "disabled"}>Submit${n > 1 ? ` ${S.selected.length}/${n}` : ""}</button>`;
+  } else {
+    title = "Submissions";
+    const canPick = phase === "judge" && iAmCzar;
+    if (canPick) hint = "Tap a submission to preview it, then award the point.";
+    else if (phase === "judge") hint = "Submissions stay anonymous until the czar decides.";
+    else hint = "Here is who played what.";
+    tray.className = "subs";
+    tray.innerHTML = S.order.map((s, k) => {
+      const p = S.players[s.pid];
+      const cls = [canPick ? "can-pick" : "", canPick && S.czarPick === k ? "chosen" : "",
+        phase === "judge" && !iAmCzar && S.reading === k ? "reading" : "",
+        phase !== "judge" && s.pid === S.winner ? "winner" : ""].join(" ");
+      const by = phase === "judge" ? "" : `<span class="sub-by">@${esc(p.name)}${s.pid === 0 ? " (you)" : ""}${s.pid === S.winner ? ` <span class="chip won">merged</span>` : ""}</span>`;
+      const inner = s.cards.map((c, j) => whiteCard(c, { tag: "span", i: k * 2 + j })).join("") + by;
+      return canPick
+        ? `<button type="button" class="sub ${cls}" data-sub="${k}" aria-pressed="${S.czarPick === k}">${inner}</button>`
+        : `<div class="sub ${cls}">${inner}</div>`;
+    }).join("");
+    if (canPick) action = `<button class="btn primary" type="button" data-act="award" ${S.czarPick != null ? "" : "disabled"}>Award the point</button>`;
+    if (phase === "result") action = `<button class="btn primary" type="button" data-act="next">Next round</button>`;
+    if (phase === "over") action = `<button class="btn primary" type="button" data-act="again">Play again</button>`;
+  }
+  $("trayTitle").textContent = title;
+  $("trayHint").textContent = hint;
+  $("trayActions").innerHTML = action;
+}
+
+/* ---------- input ---------- */
+function toggleCard(i) {
+  const n = need(), pos = S.selected.indexOf(i);
+  if (pos >= 0) S.selected.splice(pos, 1);
+  else { if (S.selected.length >= n) S.selected.shift(); S.selected.push(i); }
+}
+document.addEventListener("click", e => {
+  const h = e.target.closest("[data-hand]");
+  if (h && !h.disabled && S.phase === "pick") { toggleCard(+h.dataset.hand); return render(); }
+  const s = e.target.closest("[data-sub]");
+  if (s && S.phase === "judge" && S.czar === 0) { S.czarPick = +s.dataset.sub; return render(); }
+  const a = e.target.closest("[data-act]");
+  if (!a || a.disabled) return;
+  const act = a.dataset.act;
+  if (act === "submit" && S.selected.length === need() && !submitted(0)) { submit(0, S.selected); S.selected = []; render(); drive(); }
+  else if (act === "award" && S.czarPick != null && S.phase === "judge") { award(S.czarPick); render(); }
+  else if (act === "next" && S.phase === "result") { startRound(); render(); drive(); }
+  else if (act === "again") { newGame(prefs); render(); drive(); }
+  else if (act === "cancel-setup") toggleSetup(false);
+});
+
+function toggleSetup(open) {
+  const f = $("setup");
+  f.hidden = !open;
+  $("newGameBtn").setAttribute("aria-expanded", String(open));
+  if (open) {
+    $("nameInput").value = prefs.name; $("botsInput").value = String(prefs.bots); $("targetInput").value = String(prefs.target);
+    $("nameInput").focus();
+  }
+}
+$("newGameBtn").addEventListener("click", () => toggleSetup($("setup").hidden));
+$("setup").addEventListener("submit", e => {
+  e.preventDefault();
+  prefs = { name: $("nameInput").value || "you", bots: +$("botsInput").value, target: +$("targetInput").value };
+  savePrefs(); toggleSetup(false);
+  newGame(prefs); render(); drive();
+});
+
+/* ---------- boot (keeps the game going across page updates) ---------- */
+window.claude?.hot?.snapshot?.(() => S);
+function start(data) {
+  if (data && Array.isArray(data.players)) S = data;
+  else newGame(prefs);
+  render(); drive();
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
+</body>
+</html>
