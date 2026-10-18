@@ -1,276 +1,619 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="A browser party game in the style of Cards Against Humanity, with developer-themed cards. Runs entirely in the browser.">
 <title>Commits Against Humanity</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A multiplayer party game in the style of Cards Against Humanity, with developer-themed cards, custom card packs, ruler portraits and XP.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700;800&family=Oxanium:wght@500;600;700;800&family=Share+Tech+Mono&display=swap">
 <style>
-/* Layout: a dotted "table" where the prompt card sits beside the face-down pile; contributors + git log on the right; your hand in a tray below. */
+/* Layout: a starship bridge. Home pairs the comms console (create / join) with your ruler dossier and the galactic standings;
+   in game, the prompt card sits on a hex-grid map beside the face-down pile, the empire roster and git log run down the right, and your hand of data slates sits below.
+   One deliberate dark look (deep space), so there is no light variant. */
 :root {
-  --bg: #ecf0ed; --surface: #f8faf8; --fg: #16201a; --muted: #56645b; --line: #d0d9d3;
-  --accent: #1c8247; --accent-ink: #ffffff; --accent-soft: #d3efdc; --del: #bd3838;
-  --g0: #dde5df; --g1: #a3e2b8; --g2: #52bf7e; --g3: #258f53; --g4: #135d35;
-  --ink-black: #111413; --on-black: #f4f6f4; --ink-white: #fcfcf9; --on-white: #141615;
-  --meta-black: #8a938d; --meta-white: #7b847e; --fill-on-black: #8ee4aa;
-  --card-edge: rgba(15, 30, 20, .14); --shadow: rgba(15, 30, 20, .45); --dot: #c9d3cc;
-  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0d1210; --surface: #141b17; --fg: #e1e9e4; --muted: #8b998f; --line: #25302a;
-    --accent: #3cba6f; --accent-ink: #04120a; --accent-soft: #183b27; --del: #e26b6b;
-    --g0: #1d2722; --g1: #0f472b; --g2: #0a6e36; --g3: #27a446; --g4: #3fd45c;
-    --ink-black: #040605; --card-edge: rgba(255, 255, 255, .13); --shadow: rgba(0, 0, 0, .8); --dot: #1f2924;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0d1210; --surface: #141b17; --fg: #e1e9e4; --muted: #8b998f; --line: #25302a;
-  --accent: #3cba6f; --accent-ink: #04120a; --accent-soft: #183b27; --del: #e26b6b;
-  --g0: #1d2722; --g1: #0f472b; --g2: #0a6e36; --g3: #27a446; --g4: #3fd45c;
-  --ink-black: #040605; --card-edge: rgba(255, 255, 255, .13); --shadow: rgba(0, 0, 0, .8); --dot: #1f2924;
+  --void: #03080d; --hull: #08141c; --hull-2: #0d1d28; --hull-3: #132a37;
+  --edge: #22505b; --edge-hi: #62d6d2;
+  --fg: #d8ecee; --muted: #8aa6ad; --dim: #557079;
+  --teal: #3fc9c4; --teal-deep: #156461; --teal-soft: rgba(63, 201, 196, .12);
+  --gold: #eabf5a; --gold-deep: #a57a22; --gold-soft: rgba(234, 191, 90, .13);
+  --good: #7fdc6e; --bad: #f0675a; --bad-soft: rgba(240, 103, 90, .14);
+  --slate: #e7f0f1; --slate-2: #d3e3e5; --on-slate: #0a1a20; --slate-meta: #5c7a82;
+  --pick-slate: #fbefcf; --pick-slate-2: #f1d796;
+  --display: "Oxanium", "Eurostile", "Segoe UI", sans-serif;
+  --body: "Exo 2", "Segoe UI", system-ui, sans-serif;
+  --mono: "Share Tech Mono", ui-monospace, Consolas, monospace;
+  --cut: 14px;
   color-scheme: dark;
 }
 
-body { background: var(--bg); color: var(--fg); font-family: var(--display); font-size: 15px; line-height: 1.5; }
-.mono { font-family: var(--mono); }
+[hidden] { display: none !important; }
+html { background: var(--void); }
+body {
+  margin: 0; color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; min-height: 100vh;
+  background:
+    radial-gradient(ellipse 70% 50% at 85% 0%, rgba(37, 92, 120, .35), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 0% 100%, rgba(88, 40, 110, .28), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 40% 60%, rgba(20, 70, 70, .18), transparent 70%),
+    var(--void);
+  background-attachment: fixed;
+}
+#stars { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 button { font: inherit; color: inherit; }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+::selection { background: rgba(234, 191, 90, .35); }
 
 .app {
-  max-width: 1180px; margin: 0 auto; display: grid; gap: 18px;
-  padding-block: 20px 48px;
+  position: relative; z-index: 1;
+  max-width: 1220px; margin: 0 auto; display: grid; gap: 18px;
+  padding-block: 18px 56px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 
-/* Header */
-.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+/* Chamfered window chrome shared by every panel */
+.frame { position: relative; isolation: isolate; }
+.frame::before, .frame::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+}
+.frame::before { inset: 0; --c: var(--cut); background: linear-gradient(135deg, var(--edge-hi), var(--edge) 70px, var(--edge) calc(100% - 70px), var(--edge-hi)); }
+.frame::after { inset: 1px; --c: calc(var(--cut) - .6px); background: linear-gradient(180deg, rgba(16, 36, 48, .96), rgba(8, 20, 28, .94) 160px); }
+
+/* Top bar: emblem + title, then your empire readouts like a resource bar */
+.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 12px 16px; }
 .brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
-.logo {
-  flex: none; width: 46px; height: 46px; border-radius: 10px; display: grid; place-items: center;
-  background: var(--ink-black); border: 1px solid var(--card-edge);
-  font-family: var(--mono); font-weight: 600; font-size: 15px; letter-spacing: -.04em;
+.emblem { flex: none; width: 48px; height: 48px; filter: drop-shadow(0 0 10px rgba(98, 214, 210, .35)); }
+h1 {
+  margin: 0; font-family: var(--display); font-size: clamp(19px, 2.8vw, 26px); font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; line-height: 1.1; text-wrap: balance;
+  background: linear-gradient(180deg, #fff6dc, var(--gold) 70%, var(--gold-deep)); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.logo .plus { color: var(--fill-on-black); } .logo .minus { color: #ff8f8f; }
-h1 { margin: 0; font-size: clamp(20px, 3.2vw, 28px); font-weight: 800; letter-spacing: -.025em; line-height: 1.1; text-wrap: balance; }
-.sub { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
-.top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tagline { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+.top-right { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: flex-end; }
+.res { display: flex; flex-wrap: wrap; gap: 4px; align-items: stretch; }
+.res-item {
+  display: flex; align-items: center; gap: 7px; padding: 5px 10px; background: rgba(5, 14, 20, .7);
+  border: 1px solid rgba(34, 80, 91, .8); font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums;
+}
+.res-item svg { width: 16px; height: 16px; flex: none; }
+.res-item small { font-family: var(--body); font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.me-chip {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: center; text-align: left; cursor: pointer;
+  padding: 5px 12px 5px 6px; background: rgba(5, 14, 20, .7); border: 1px solid var(--edge); min-width: 0; max-width: 100%;
+  transition: border-color .15s, background .15s;
+}
+.me-chip:hover { border-color: var(--edge-hi); background: rgba(20, 50, 60, .7); }
+.me-chip .av { grid-row: span 2; }
+.me-name { font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: .03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-rank { font-size: 11.5px; color: var(--gold); white-space: nowrap; display: flex; gap: 8px; align-items: center; }
+.xpbar { position: relative; height: 6px; background: rgba(5, 14, 20, .9); border: 1px solid var(--edge); overflow: hidden; }
+.xpbar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); box-shadow: 0 0 8px var(--gold); transition: width .6s ease; }
+.me-chip .xpbar { width: 92px; height: 4px; }
+.top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .top-right { justify-content: flex-start; width: 100%; }
+  .me-chip { order: -1; flex: 1 1 100%; grid-template-columns: auto minmax(0, 1fr); }
+  .me-chip .xpbar { width: 100%; max-width: 160px; }
+  .res-item small { display: none; }
+}
+
 .chip {
-  display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11.5px;
-  padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase;
+  padding: 2px 8px; border: 1px solid var(--edge); color: var(--muted); white-space: nowrap; background: rgba(5, 14, 20, .55);
 }
+.chip.code { color: var(--gold); border-color: rgba(234, 191, 90, .5); font-size: 13px; letter-spacing: .14em; }
 
+/* Buttons: bevelled console keys */
 .btn {
-  font-weight: 700; font-size: 14px; padding: 10px 16px; border-radius: 10px; cursor: pointer;
-  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
-  transition: transform .12s ease, background .12s ease;
+  --c: 8px; font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .09em; text-transform: uppercase;
+  padding: 10px 18px; cursor: pointer; border: 0; color: var(--fg);
+  background: linear-gradient(180deg, #183644, #0c1d27);
+  box-shadow: inset 0 0 0 1px var(--edge), inset 0 1px 0 rgba(255, 255, 255, .06);
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  transition: box-shadow .15s ease, color .15s ease, filter .15s ease;
 }
-.btn:hover:not(:disabled) { transform: translateY(-1px); }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn:hover:not(:disabled) { color: #fff; box-shadow: inset 0 0 0 1px var(--edge-hi), inset 0 0 18px rgba(98, 214, 210, .2); }
+.btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--gold); }
+.btn.primary { color: #f2ffff; background: linear-gradient(180deg, #2fa9a3, #135f5d); box-shadow: inset 0 0 0 1px #84f1ea, inset 0 1px 0 rgba(255, 255, 255, .28); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.12); box-shadow: inset 0 0 0 1px #b6fff9, inset 0 0 20px rgba(255, 255, 255, .15); }
+.btn.gold { color: #1b1203; background: linear-gradient(180deg, #f3d17e, #b9862a); box-shadow: inset 0 0 0 1px #ffe7a8, inset 0 1px 0 rgba(255, 255, 255, .4); }
+.btn.gold:hover:not(:disabled) { color: #1b1203; filter: brightness(1.08); box-shadow: inset 0 0 0 1px #fff3cf; }
+.btn.small { --c: 6px; font-size: 11.5px; padding: 6px 11px; }
+.btn.danger { color: var(--bad); box-shadow: inset 0 0 0 1px rgba(240, 103, 90, .55); }
+.btn.danger:hover:not(:disabled) { color: #ffb3aa; box-shadow: inset 0 0 0 1px var(--bad), inset 0 0 16px rgba(240, 103, 90, .2); }
+.btn.danger.armed { color: #fff; background: linear-gradient(180deg, #b0423a, #6c1f1a); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
 
-/* Setup */
-.setup {
-  display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: end;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px;
+.notice {
+  margin: 0; padding: 10px 14px 10px 16px; font-size: 14px; color: var(--fg);
+  background: linear-gradient(90deg, rgba(63, 201, 196, .18), rgba(63, 201, 196, .05)); border: 1px solid rgba(98, 214, 210, .55);
 }
-.field { display: grid; gap: 4px; min-width: 0; }
-.field label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-.field input, .field select {
-  font: inherit; font-size: 15px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
-  background: var(--bg); color: var(--fg); min-width: 0; max-width: 100%;
+.notice.error { background: linear-gradient(90deg, rgba(240, 103, 90, .2), rgba(240, 103, 90, .05)); border-color: rgba(240, 103, 90, .6); }
+
+/* Panels */
+.panel { display: grid; gap: 14px; align-content: start; padding: 16px 18px 18px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.ptitle {
+  margin: 0; display: flex; align-items: center; gap: 12px; font-family: var(--display); font-size: 15px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: #f0f7f7;
 }
-.field input { width: 200px; }
-.setup-actions { display: flex; gap: 8px; margin-left: auto; }
+.ptitle::after { content: ""; flex: 1; min-width: 24px; height: 1px; background: linear-gradient(90deg, rgba(98, 214, 210, .7), transparent); }
+.panel-head .ptitle { flex: 1 1 200px; }
+.panel p.hint, .hint { margin: 0; color: var(--muted); font-size: 13px; max-width: 64ch; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.home { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.col { display: grid; gap: 18px; min-width: 0; }
+.home-packs { grid-column: 1 / -1; }
+@media (max-width: 860px) { .split, .home { grid-template-columns: minmax(0, 1fr); } }
+
+.field { display: grid; gap: 5px; min-width: 0; }
+.field label, .eyebrow {
+  margin: 0; font-family: var(--mono); font-size: 11.5px; font-weight: 400; text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
+}
+.field input, .field select, .field textarea {
+  font: inherit; font-size: 15px; padding: 9px 11px; border-radius: 0; border: 1px solid var(--edge);
+  background: rgba(3, 10, 15, .85); color: var(--fg); min-width: 0; max-width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--edge-hi); box-shadow: 0 0 0 1px var(--edge-hi), 0 0 14px rgba(98, 214, 210, .25); }
+.field textarea { font-family: var(--mono); font-size: 13.5px; line-height: 1.5; min-height: 220px; resize: vertical; }
+.inline { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.inline .field { flex: 1 1 180px; }
+.code-input { text-transform: uppercase; letter-spacing: .3em; font-family: var(--mono) !important; font-size: 18px !important; }
+.divider { display: flex; align-items: center; gap: 10px; color: var(--dim); font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: .12em; }
+.divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--edge); }
+
+.rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;
+  padding: 8px 12px 8px 8px; border: 1px solid rgba(34, 80, 91, .75); background: linear-gradient(90deg, rgba(19, 42, 55, .75), rgba(8, 20, 28, .6));
+}
+.row.me { border-color: rgba(234, 191, 90, .55); background: linear-gradient(90deg, rgba(234, 191, 90, .12), rgba(8, 20, 28, .6)); }
+.row-main { min-width: 0; display: grid; gap: 1px; }
+.row-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-sub { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+.code-tag { font-family: var(--mono); font-size: 16px; letter-spacing: .16em; padding: 4px 8px; color: var(--gold); border: 1px solid rgba(234, 191, 90, .45); background: rgba(3, 10, 15, .8); }
+.big-code {
+  font-family: var(--display); font-weight: 700; font-size: clamp(36px, 7vw, 56px); letter-spacing: .22em; line-height: 1; color: var(--gold);
+  text-shadow: 0 0 22px rgba(234, 191, 90, .45); padding: 18px 20px 16px 24px; width: fit-content; max-width: 100%; --cut: 12px;
+}
+.dot { width: 8px; height: 8px; transform: rotate(45deg); background: var(--good); display: inline-block; box-shadow: 0 0 6px var(--good); margin-right: 4px; }
+.dot.off { background: var(--dim); box-shadow: none; }
+.checks { display: grid; gap: 10px; }
+.check {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 9px 12px;
+  border: 1px solid rgba(34, 80, 91, .75); background: rgba(8, 20, 28, .7); cursor: pointer; transition: border-color .15s;
+}
+.check:hover:not(.disabled) { border-color: var(--edge-hi); }
+.check:has(input:checked) { border-color: rgba(98, 214, 210, .7); background: linear-gradient(90deg, rgba(63, 201, 196, .14), rgba(8, 20, 28, .7)); }
+.check input { margin-top: 4px; accent-color: var(--teal); }
+.check.disabled { cursor: default; }
+.pack-summary { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-top: 6px; }
+.pack-group { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid rgba(34, 80, 91, .6); }
+.pack-group-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; }
+.pack-group-head .eyebrow { color: var(--gold); }
+.pack-group-head .hint { margin-top: 2px; }
+.pack-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 8px; }
+.pack-group.trash .check { border-style: dashed; }
+.pack-group.trash .eyebrow { color: var(--bad); }
+.pack-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 700px) { .pack-grid { grid-template-columns: minmax(0, 1fr); } }
+.form-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.form-msg { color: var(--bad); font-size: 13px; margin: 0; }
+
+/* Portraits: a chamfered frame, with the level in a gold tab on the corner */
+.av { --s: 40px; position: relative; flex: none; width: var(--s); height: var(--s); display: inline-block; }
+.av.sm { --s: 26px; } .av.md { --s: 46px; } .av.lg { --s: 64px; } .av.xl { --s: 112px; } .av.xxl { --s: 168px; }
+.pt {
+  --c: calc(var(--s) * .2); display: block; width: 100%; height: 100%; padding: 1px; background: linear-gradient(135deg, var(--edge-hi), var(--edge) 50%, var(--gold-deep));
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+}
+.pt > svg, .pt > img {
+  display: block; width: 100%; height: 100%; object-fit: cover; background: var(--hull);
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+}
+.lv {
+  position: absolute; right: -5px; bottom: -5px; min-width: 18px; padding: 0 4px; height: 16px; display: grid; place-items: center;
+  font-family: var(--display); font-weight: 800; font-size: 10.5px; line-height: 1; color: #1b1203;
+  background: linear-gradient(180deg, #f6d886, #c49434); box-shadow: 0 0 0 1px #3a2a08, 0 0 8px rgba(234, 191, 90, .5);
+}
+.av.sm .lv { display: none; }
+.av.lg .lv, .av.xl .lv, .av.xxl .lv { font-size: 13px; height: 20px; min-width: 24px; right: -6px; bottom: -6px; }
+.avatar { width: 36px; height: 36px; overflow: hidden; background: rgba(3, 10, 15, .9); border: 1px solid var(--edge); }
+.avatar svg { display: block; width: 100%; height: 100%; }
+
+/* Ruler dossier */
+.ruler-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
+.ruler-name { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: .03em; line-height: 1.15; overflow-wrap: anywhere; }
+.ruler-rank { margin: 2px 0 8px; color: var(--gold); font-family: var(--display); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-size: 12.5px; }
+.xp-line { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ruler .xpbar { height: 8px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.stat { padding: 8px 10px; background: rgba(3, 10, 15, .6); border: 1px solid rgba(34, 80, 91, .6); min-width: 0; }
+.stat dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.stat dd { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 420px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.traits { display: flex; flex-wrap: wrap; gap: 6px; }
+.trait {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 6px; font-size: 12.5px; font-weight: 600;
+  color: var(--good); background: rgba(127, 220, 110, .1); border: 1px solid rgba(127, 220, 110, .45); cursor: help;
+}
+.trait::before { content: ""; width: 7px; height: 7px; transform: rotate(45deg); background: currentColor; }
+.trait.locked { color: var(--dim); background: rgba(3, 10, 15, .5); border-color: rgba(85, 112, 121, .45); border-style: dashed; }
+.rank-n { font-family: var(--display); font-weight: 700; color: var(--muted); width: 1.6em; text-align: right; font-variant-numeric: tabular-nums; }
+.row.top1 .rank-n { color: var(--gold); }
+.std { grid-template-columns: auto auto minmax(0, 1fr) auto; }
+.xp-num { font-family: var(--mono); color: var(--gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Portrait editor */
+.pf-grid { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .pf-grid { grid-template-columns: minmax(0, 1fr); } }
+.pf-preview { display: grid; justify-items: center; gap: 12px; padding: 8px 0; text-align: center; }
+.species { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.sp {
+  display: grid; justify-items: center; gap: 4px; padding: 8px 4px 6px; cursor: pointer; background: rgba(3, 10, 15, .6);
+  border: 1px solid rgba(34, 80, 91, .7); font-size: 11.5px; color: var(--muted); transition: border-color .15s;
+}
+.sp:hover { border-color: var(--edge-hi); color: var(--fg); }
+.sp[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); background: var(--gold-soft); }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw {
+  width: 30px; height: 30px; padding: 0; cursor: pointer; border: 1px solid rgba(255, 255, 255, .25); background: var(--sw);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.sw[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--gold), inset 0 0 0 4px #000; }
+.sw:focus-visible { outline: none; box-shadow: inset 0 0 0 2px #fff; }
+.upload { position: relative; overflow: hidden; }
+.upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
 /* Board */
-.board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); gap: 18px; align-items: start; }
-@media (max-width: 840px) { .board { grid-template-columns: minmax(0, 1fr); } }
+.board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 330px); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .board { grid-template-columns: minmax(0, 1fr); } }
+.game { display: grid; gap: 18px; }
 
-.stage {
-  display: grid; gap: 16px; padding: 20px; border-radius: 16px; border: 1px solid var(--line); min-width: 0;
-  background-color: var(--surface);
-  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
-  background-size: 18px 18px;
+.stage { display: grid; gap: 16px; padding: 20px; min-width: 0; }
+.stage::after {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100' viewBox='0 0 56 100'%3E%3Cpath d='M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100' fill='none' stroke='%2362d6d2' stroke-opacity='.08'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse at 30% 20%, rgba(30, 80, 100, .5), rgba(4, 12, 18, .96) 70%);
+  background-size: 56px 100px, auto;
 }
-.status { font-size: 16.5px; font-weight: 500; line-height: 1.45; min-height: 2.9em; max-width: 60ch; text-wrap: pretty; }
-.status strong { font-weight: 800; }
-.stage-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.status { font-size: 17px; font-weight: 500; line-height: 1.45; min-height: 2.9em; max-width: 60ch; text-wrap: pretty; }
+.status strong { font-weight: 700; color: var(--gold); }
+.stage-row { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
 
 /* Cards */
-.card { border-radius: 14px; border: 1px solid var(--card-edge); box-shadow: 0 10px 22px -16px var(--shadow); text-align: left; }
+.card { text-align: left; border: 0; }
 .card-text { overflow-wrap: anywhere; }
-.card-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10.5px; font-weight: 400; letter-spacing: .02em; }
+.card-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: .04em; }
 
 .card.black {
-  width: min(100%, 340px); min-height: 300px; padding: 22px 22px 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 20px;
-  background: var(--ink-black); color: var(--on-black);
+  --cut: 22px; width: min(100%, 340px); min-height: 300px; padding: 24px 24px 18px; display: flex; flex-direction: column; justify-content: space-between; gap: 20px;
+  color: #f4fafa;
 }
-.card.black .card-text { margin: 0; font-size: clamp(20px, 2.6vw, 25px); font-weight: 800; line-height: 1.25; letter-spacing: -.01em; }
-.card.black .card-meta { color: var(--meta-black); }
-.card.black mark { background: none; color: var(--fill-on-black); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
-.blank { display: inline-block; width: 3.4em; height: .9em; border-bottom: 3px solid currentColor; vertical-align: baseline; }
-.pick { color: var(--on-black); border: 1px solid var(--meta-black); border-radius: 999px; padding: 1px 8px; text-transform: uppercase; letter-spacing: .08em; }
-.stage.fresh .card.black { animation: flip .45s cubic-bezier(.2, .8, .2, 1); }
+.card.black::before { background: linear-gradient(135deg, #9af5f0, rgba(98, 214, 210, .55) 30%, rgba(98, 214, 210, .55) 70%, #9af5f0); }
+.card.black::after { background: radial-gradient(ellipse at 20% 0%, #163947, #060f15 72%); box-shadow: inset 0 0 40px rgba(63, 201, 196, .12); }
+.card.black .card-text { margin: 0; font-size: clamp(20px, 2.6vw, 25px); font-weight: 700; line-height: 1.28; }
+.card.black .card-meta { color: var(--muted); }
+.card.black mark { background: none; color: var(--gold); text-shadow: 0 0 14px rgba(234, 191, 90, .4); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.blank { display: inline-block; width: 3.4em; height: .9em; border-bottom: 3px solid var(--edge-hi); vertical-align: baseline; }
+.pick { color: var(--gold); border: 1px solid rgba(234, 191, 90, .6); padding: 1px 8px; text-transform: uppercase; letter-spacing: .1em; }
+.stage.fresh .card.black { animation: warp .55s cubic-bezier(.2, .8, .2, 1); }
 
 .card.white {
-  position: relative; min-height: 168px; padding: 14px 14px 12px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px;
-  background: var(--ink-white); color: var(--on-white); font-size: 16px; font-weight: 700; line-height: 1.25;
+  --c: 18px; position: relative; min-height: 168px; padding: 14px 14px 12px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px;
+  background: linear-gradient(170deg, var(--slate), var(--slate-2)); color: var(--on-slate); font-size: 16px; font-weight: 700; line-height: 1.25;
+  clip-path: polygon(0 0, calc(100% - var(--c)) 0, 100% var(--c), 100% 100%, 0 100%);
+  box-shadow: inset 0 0 0 1px rgba(10, 26, 32, .18), inset 0 -3px 0 rgba(63, 201, 196, .45);
 }
-.card.white .card-meta { color: var(--meta-white); }
-button.card { cursor: pointer; transition: transform .14s ease, box-shadow .14s ease, outline-color .14s; outline: 3px solid transparent; outline-offset: 2px; }
-button.card:hover:not(:disabled) { transform: translateY(-4px); }
-button.card.selected { outline-color: var(--accent); transform: translateY(-6px); }
-button.card:disabled { cursor: default; opacity: .55; }
+.card.white .card-meta { color: var(--slate-meta); }
+button.card { cursor: pointer; transition: transform .15s ease, filter .15s ease; }
+button.card:hover:not(:disabled) { transform: translateY(-5px); filter: brightness(1.06); }
+button.card:focus-visible { outline: none; box-shadow: inset 0 0 0 3px var(--gold-deep); }
+button.card.selected { transform: translateY(-8px); background: linear-gradient(170deg, var(--pick-slate), var(--pick-slate-2)); box-shadow: inset 0 0 0 2px var(--gold-deep), inset 0 -3px 0 var(--gold-deep); }
+button.card:disabled { cursor: default; opacity: .5; }
 .badge {
-  position: absolute; top: -9px; right: -9px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--accent); color: var(--accent-ink); font-family: var(--mono); font-size: 12px; font-weight: 600;
+  position: absolute; bottom: 10px; right: 10px; width: 26px; height: 26px; display: grid; place-items: center; transform: rotate(45deg);
+  background: var(--gold-deep); color: #fff; font-family: var(--display); font-size: 13px; font-weight: 800;
 }
+.badge > span { transform: rotate(-45deg); }
 
 /* Face-down pile */
 .pile { flex: 1 1 200px; min-width: 0; display: grid; gap: 10px; align-content: start; }
-.pile-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.pile-label { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
 .slots { display: flex; flex-wrap: wrap; gap: 10px; }
-.slot { width: 86px; height: 120px; border-radius: 10px; border: 1.5px dashed var(--line); }
+.slot { width: 86px; height: 120px; border: 1px dashed var(--edge); background: rgba(3, 10, 15, .4); }
 .slot.down {
-  border: 1px solid var(--card-edge); background: var(--ink-white); color: var(--on-white); padding: 10px;
-  font-weight: 800; font-size: 12.5px; line-height: 1.1; letter-spacing: -.01em; box-shadow: 0 8px 18px -14px var(--shadow);
-  animation: drop .3s ease-out;
+  --c: 12px; border: 0; display: grid; place-items: center; text-align: center; padding: 8px;
+  font-family: var(--display); font-weight: 700; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; line-height: 1.25; color: var(--gold);
+  background:
+    repeating-linear-gradient(45deg, rgba(98, 214, 210, .07) 0 6px, transparent 6px 12px),
+    linear-gradient(160deg, #15394a, #071319);
+  box-shadow: inset 0 0 0 1px rgba(98, 214, 210, .6);
+  clip-path: polygon(0 0, calc(100% - var(--c)) 0, 100% var(--c), 100% 100%, 0 100%);
+  animation: drop .35s ease-out;
 }
 
 /* Side panel */
-.side { display: grid; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
-.eyebrow { margin: 0; font-family: var(--mono); font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-.scores, .log { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.side { display: grid; gap: 16px; padding: 16px 18px 18px; min-width: 0; }
+.scores, .log { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .player {
-  display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; grid-template-areas: "av name state" "av graph pts";
-  gap: 4px 10px; align-items: center; padding: 8px; margin: -8px; border-radius: 10px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "av name state" "av graph pts";
+  gap: 4px 10px; align-items: center; padding: 7px 8px; border: 1px solid transparent;
 }
-.player.is-winner { background: var(--accent-soft); }
-.avatar { grid-area: av; width: 32px; height: 32px; border-radius: 7px; overflow: hidden; background: var(--g0); }
-.avatar svg { display: block; width: 100%; height: 100%; }
+.player > .av { grid-area: av; }
+.player.is-winner { border-color: rgba(234, 191, 90, .6); background: linear-gradient(90deg, var(--gold-soft), transparent); }
+.player.is-away { opacity: .5; }
 .pname { grid-area: name; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pname em { font-style: normal; font-weight: 400; color: var(--muted); }
+.pname em { font-style: normal; font-weight: 400; color: var(--muted); font-size: 13px; }
 .pstate { grid-area: state; }
-.pts { grid-area: pts; font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.graph { grid-area: graph; display: flex; flex-wrap: wrap; gap: 3px; }
-.cell { width: 11px; height: 11px; border-radius: 2.5px; background: var(--g0); outline: 1px solid var(--card-edge); outline-offset: -1px; }
-.cell.l1 { background: var(--g1); } .cell.l2 { background: var(--g2); } .cell.l3 { background: var(--g3); } .cell.l4 { background: var(--g4); }
-.chip.czar { background: var(--fg); color: var(--bg); border-color: transparent; }
-.chip.done { color: var(--accent); border-color: var(--accent); }
-.chip.won { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.pts { grid-area: pts; font-family: var(--mono); font-size: 13px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.graph { grid-area: graph; display: flex; flex-wrap: wrap; gap: 3px; padding-left: 3px; }
+.cell { width: 9px; height: 12px; transform: skewX(-20deg); background: rgba(3, 10, 15, .8); box-shadow: inset 0 0 0 1px rgba(34, 80, 91, .9); }
+.cell.l1, .cell.l2, .cell.l3, .cell.l4 { background: linear-gradient(180deg, #f6d886, #b9862a); box-shadow: 0 0 6px rgba(234, 191, 90, .5); }
+.chip.czar { background: linear-gradient(180deg, #f3d17e, #b9862a); color: #1b1203; border-color: transparent; font-weight: 700; }
+.chip.done { color: var(--teal); border-color: var(--teal); }
+.chip.won { background: linear-gradient(180deg, #2fa9a3, #135f5d); color: #fff; border-color: #84f1ea; }
 .dots::after { content: "…"; animation: blink 1.2s steps(4) infinite; }
+.host-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.rules { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 12px; }
+.timer { justify-self: start; font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: .06em; font-variant-numeric: tabular-nums; color: var(--teal); border-color: var(--teal); padding: 3px 10px; }
+.timer.urgent { color: var(--bad); border-color: var(--bad); animation: pulse 1s ease-in-out infinite; }
 
-.log { gap: 8px; font-family: var(--mono); font-size: 12px; line-height: 1.45; }
+.log { gap: 8px; font-family: var(--mono); font-size: 12.5px; line-height: 1.45; }
 .log li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
-.log .h { color: var(--accent); }
+.log .h { color: var(--gold); }
 .log .t { color: var(--muted); overflow-wrap: anywhere; }
-.log .t b { color: var(--fg); font-weight: 600; }
+.log .t b { color: var(--fg); font-weight: 400; }
 .empty { color: var(--muted); font-size: 13px; }
 
 /* Tray */
-.tray { display: grid; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
+.tray { display: grid; gap: 14px; padding: 16px 18px 20px; min-width: 0; }
 .tray-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
-.tray-head h2 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
-.tray-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.tray-head h2 { margin: 0; }
+.tray-head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 14px; padding-top: 8px; }
-.tray.fresh .card.white { animation: deal .38s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+.tray.fresh .card.white { animation: deal .4s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
 
 .subs { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
-.sub {
-  display: grid; gap: 8px; align-content: start; padding: 8px; border-radius: 16px; background: none;
-  border: 2px dashed transparent; text-align: left; cursor: default;
-}
+.sub { display: grid; gap: 8px; align-content: start; padding: 8px; background: none; border: 1px dashed transparent; text-align: left; cursor: default; }
 .sub.can-pick { cursor: pointer; }
-.sub.can-pick:hover { border-color: var(--line); }
+.sub.can-pick:hover { border-color: var(--edge-hi); }
 .sub.reading { border-color: var(--muted); }
-.sub.chosen, .sub.winner { border: 2px solid var(--accent); background: var(--accent-soft); }
+.sub.chosen, .sub.winner { border: 1px solid var(--gold); background: var(--gold-soft); box-shadow: 0 0 22px rgba(234, 191, 90, .15); }
 .sub .card.white { min-height: 128px; }
-.sub-by { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sub-by { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* XP toasts, stacked bottom-right like situation notifications */
+.toasts {
+  position: fixed; z-index: 20; right: 0; bottom: 0; display: grid; gap: 8px; justify-items: end; pointer-events: none;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) 16px;
+}
+.toast {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; align-items: center; min-width: 220px; max-width: min(340px, calc(100vw - 32px));
+  padding: 10px 16px 10px 12px; --cut: 10px; animation: toast-in .35s cubic-bezier(.2, .8, .2, 1);
+}
+.toast.out { animation: toast-out .4s ease forwards; }
+.toast b { grid-row: span 2; font-family: var(--display); font-size: 20px; font-weight: 800; color: var(--gold); text-shadow: 0 0 12px rgba(234, 191, 90, .5); }
+.toast span { font-weight: 600; }
+.toast small { color: var(--muted); font-size: 12px; }
+.toast.big { --cut: 14px; padding: 14px 18px 14px 14px; }
+.toast.big b { font-size: 15px; letter-spacing: .1em; text-transform: uppercase; }
+.toast.big::before { background: linear-gradient(135deg, var(--gold), var(--gold-deep) 50%, var(--gold)); }
 
 @keyframes deal { from { opacity: 0; transform: translateY(18px) rotate(-2deg); } }
-@keyframes flip { from { opacity: 0; transform: perspective(800px) rotateY(-70deg); } }
+@keyframes warp { from { opacity: 0; transform: scale(.92); filter: brightness(2.2) blur(2px); } }
 @keyframes drop { from { opacity: 0; transform: translateY(-14px) rotate(4deg); } }
 @keyframes blink { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "…"; } }
+@keyframes pulse { 50% { box-shadow: 0 0 14px rgba(240, 103, 90, .5); } }
+@keyframes toast-in { from { opacity: 0; transform: translateX(30px); } }
+@keyframes toast-out { to { opacity: 0; transform: translateX(30px); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
-
-/* Base reset for standalone hosting */
-:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-body { margin: 0; } img { max-width: 100%; } [hidden] { display: none !important; }
 </style>
-</head>
-<body>
 
+<canvas id="stars" aria-hidden="true"></canvas>
 <div class="app">
-  <header class="top">
+  <header class="topbar frame">
     <div class="brand">
-      <div class="logo" aria-hidden="true"><span class="plus">+</span><span class="minus">−</span></div>
+      <svg class="emblem" viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M24 2 44 13.5v21L24 46 4 34.5v-21Z" fill="#06121a" stroke="#62d6d2" stroke-width="1.5"/>
+        <path d="M24 8 38.5 16.4v15.2L24 40 9.5 31.6V16.4Z" fill="none" stroke="#eabf5a" stroke-opacity=".55"/>
+        <rect x="11" y="22.5" width="11" height="3" fill="#eabf5a"/><rect x="15" y="18.5" width="3" height="11" fill="#eabf5a"/>
+        <rect x="26" y="22.5" width="11" height="3" fill="#f0675a"/>
+      </svg>
       <div>
         <h1>Commits Against Humanity</h1>
-        <p class="sub">A party game for people who have been paged at 3 AM.</p>
+        <p class="tagline">A galactic party game for people who have been paged at 3 AM.</p>
       </div>
     </div>
-    <div class="top-actions">
-      <span id="roundInfo" class="chip"></span>
-      <button id="newGameBtn" class="btn" type="button" aria-expanded="false" aria-controls="setup">New game</button>
+    <div class="top-right">
+      <div id="resBar" class="res"></div>
+      <button id="meChip" class="me-chip" type="button" data-act="open-profile" aria-label="Edit your ruler profile"></button>
+      <div class="top-actions">
+        <span id="roundInfo" class="chip" hidden></span>
+        <span id="codeChip" class="chip code" hidden></span>
+        <button id="leaveBtn" class="btn small" type="button" data-act="leave" hidden>Leave lobby</button>
+      </div>
     </div>
   </header>
 
-  <form id="setup" class="setup" hidden>
-    <div class="field">
-      <label for="nameInput">Your handle</label>
-      <input id="nameInput" name="name" maxlength="20" autocomplete="off" spellcheck="false">
-    </div>
-    <div class="field">
-      <label for="botsInput">Bot players</label>
-      <select id="botsInput" name="bots">
-        <option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="targetInput">Points to win</label>
-      <select id="targetInput" name="target">
-        <option value="3">3</option><option value="5">5</option><option value="7">7</option><option value="10">10</option>
-      </select>
-    </div>
-    <div class="setup-actions">
-      <button class="btn" type="button" data-act="cancel-setup">Cancel</button>
-      <button class="btn primary" type="submit">Deal new game</button>
-    </div>
-  </form>
+  <p id="notice" class="notice" role="status" hidden></p>
 
-  <main class="board">
-    <section id="stage" class="stage" aria-live="polite">
-      <div id="status" class="status"></div>
-      <div class="stage-row">
-        <div id="blackCard" style="display:contents"></div>
-        <div id="pile" class="pile"></div>
+  <!-- Home: create or join a lobby, your ruler dossier, the standings -->
+  <div id="viewHome" class="home" hidden>
+    <div class="col">
+      <form id="startForm" class="panel frame" autocomplete="off">
+        <h2 class="ptitle">Play with friends</h2>
+        <div class="field">
+          <label for="nameInput">Ruler name</label>
+          <input id="nameInput" maxlength="20" spellcheck="false" placeholder="e.g. rebase_rita">
+        </div>
+        <button id="createBtn" class="btn primary" type="submit">Create a lobby</button>
+        <div class="divider">or join one</div>
+        <div class="inline">
+          <div class="field">
+            <label for="codeInput">Lobby code</label>
+            <input id="codeInput" class="code-input" maxlength="4" spellcheck="false" placeholder="ABCD">
+          </div>
+          <button id="joinBtn" class="btn" type="button" data-act="join-code">Join</button>
+        </div>
+        <p class="hint">Everyone opens this same page and joins with the 4-letter code. You need 3 or more players to start.</p>
+      </form>
+      <section class="panel frame">
+        <h2 class="ptitle">Open lobbies</h2>
+        <ul id="lobbyList" class="rows"></ul>
+      </section>
+    </div>
+    <div class="col">
+      <section id="rulerCard" class="panel frame ruler" aria-label="Your ruler"></section>
+      <section class="panel frame">
+        <h2 class="ptitle">Galactic standings</h2>
+        <ol id="standings" class="rows"></ol>
+      </section>
+    </div>
+    <section class="panel frame home-packs">
+      <div class="panel-head">
+        <h2 class="ptitle">Card packs</h2>
+        <button class="btn" type="button" data-act="open-packs">Manage card packs</button>
+      </div>
+      <p class="hint">The game ships with 16 packs, from expansions to community picks to a deliberately awful trash tier. You can also write your own: every pack you make is shared with everyone who plays here, and the host picks which packs go into a game.</p>
+    </section>
+  </div>
+
+  <!-- Ruler portrait editor -->
+  <div id="viewProfile" class="pf-grid" hidden>
+    <section class="panel frame">
+      <h2 class="ptitle">Your ruler</h2>
+      <div class="pf-preview">
+        <div id="pfBig"></div>
+        <div id="pfRank" class="ruler-rank"></div>
+      </div>
+      <div class="field">
+        <label for="pfName">Ruler name</label>
+        <input id="pfName" maxlength="20" spellcheck="false" placeholder="e.g. rebase_rita">
+      </div>
+      <div class="form-actions">
+        <label class="btn small upload">Upload a picture<input id="pfFile" type="file" accept="image/*"></label>
+        <button id="pfClearImg" class="btn small" type="button" data-act="pf-clear-img">Use species portrait</button>
+      </div>
+      <p class="hint">Uploaded pictures are cropped to a square and shrunk before saving. Everyone who plays here can see your portrait.</p>
+    </section>
+    <section class="panel frame">
+      <div class="panel-head">
+        <h2 class="ptitle">Species</h2>
+        <button class="btn small" type="button" data-act="pf-random">Randomize</button>
+      </div>
+      <div id="pfSpecies" class="species"></div>
+      <div class="field"><span class="eyebrow">Skin</span><div id="pfSkin" class="swatches"></div></div>
+      <div class="field"><span class="eyebrow">Eyes</span><div id="pfEyes" class="swatches"></div></div>
+      <div class="field"><span class="eyebrow">Uniform</span><div id="pfAttire" class="swatches"></div></div>
+      <div class="field"><span class="eyebrow">Backdrop</span><div id="pfBack" class="swatches"></div></div>
+      <p id="pfMsg" class="form-msg" hidden></p>
+      <div class="form-actions">
+        <button class="btn primary" type="button" data-act="pf-save">Save ruler</button>
+        <button class="btn" type="button" data-act="pf-cancel">Cancel</button>
       </div>
     </section>
-    <aside class="side">
-      <h2 class="eyebrow">Contributors</h2>
-      <ol id="scores" class="scores"></ol>
-      <h2 class="eyebrow">git log --oneline</h2>
-      <ol id="log" class="log"></ol>
-    </aside>
-  </main>
+  </div>
 
-  <section id="trayWrap" class="tray">
-    <div class="tray-head">
-      <div><h2 id="trayTitle"></h2><p id="trayHint"></p></div>
-      <div id="trayActions"></div>
-    </div>
-    <div id="tray"></div>
-  </section>
+  <!-- Card pack library and editor -->
+  <div id="viewPacks" class="game" hidden>
+    <section class="panel frame">
+      <div class="panel-head">
+        <h2 class="ptitle">Card packs</h2>
+        <div class="form-actions">
+          <button class="btn" type="button" data-act="close-packs">Back</button>
+          <button class="btn primary" type="button" data-act="new-pack">New pack</button>
+        </div>
+      </div>
+      <ul id="packList" class="rows"></ul>
+    </section>
+    <form id="packForm" class="panel frame" autocomplete="off" hidden>
+      <h2 id="packFormTitle" class="ptitle">New pack</h2>
+      <div class="field">
+        <label for="packName">Pack name</label>
+        <input id="packName" maxlength="40" placeholder="e.g. Office Party">
+      </div>
+      <div class="pack-grid">
+        <div class="field">
+          <label for="packBlack">Black cards (prompts), one per line</label>
+          <textarea id="packBlack" spellcheck="true" placeholder="The real reason the deploy failed: ____.&#10;____ + ____ = a very long weekend."></textarea>
+        </div>
+        <div class="field">
+          <label for="packWhite">White cards (answers), one per line</label>
+          <textarea id="packWhite" spellcheck="true" placeholder="A suspiciously quiet Slack channel&#10;The printer"></textarea>
+        </div>
+      </div>
+      <p class="hint">Write ____ (underscores) for each blank, up to 3 per prompt. A prompt with no blank is a question: players answer it with one card. Up to 400 cards of each colour, 150 characters per card.</p>
+      <p id="packFormMsg" class="form-msg" hidden></p>
+      <div class="form-actions">
+        <button class="btn primary" type="submit">Save pack</button>
+        <button class="btn" type="button" data-act="cancel-pack">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Lobby: waiting room before a game -->
+  <div id="viewLobby" class="split" hidden>
+    <section class="panel frame">
+      <h2 class="ptitle">Lobby code</h2>
+      <div id="lobbyCode" class="big-code frame"></div>
+      <div class="form-actions">
+        <button class="btn small" type="button" data-act="copy-code">Copy code</button>
+        <span id="copyMsg" class="hint"></span>
+      </div>
+      <p class="hint">Friends open this page, enter a name and join with this code.</p>
+      <h2 class="ptitle" id="playersHead">Players</h2>
+      <ul id="lobbyPlayers" class="rows"></ul>
+      <form id="renameForm" class="inline" autocomplete="off">
+        <div class="field">
+          <label for="renameInput">Change your name</label>
+          <input id="renameInput" maxlength="20" spellcheck="false">
+        </div>
+        <button class="btn" type="submit">Rename</button>
+      </form>
+    </section>
+    <section class="panel frame">
+      <h2 class="ptitle">Game settings</h2>
+      <div id="lobbySettings" class="checks"></div>
+      <div id="lobbyStart" class="form-actions"></div>
+    </section>
+  </div>
+
+  <!-- Game table -->
+  <div id="viewGame" class="game" hidden>
+    <main class="board">
+      <section id="stage" class="stage frame" aria-live="polite">
+        <span id="timer" class="chip timer" role="timer" hidden></span>
+        <div id="status" class="status"></div>
+        <div class="stage-row">
+          <div id="blackCard" style="display:contents"></div>
+          <div id="pile" class="pile"></div>
+        </div>
+      </section>
+      <aside class="side frame">
+        <h2 class="ptitle">Empires</h2>
+        <ol id="scores" class="scores"></ol>
+        <h2 class="ptitle">git log --oneline</h2>
+        <ol id="log" class="log"></ol>
+        <h2 class="ptitle">House rules</h2>
+        <p id="rulesLine" class="rules"></p>
+        <div id="hostTools" class="host-tools"></div>
+      </aside>
+    </main>
+
+    <section id="trayWrap" class="tray frame">
+      <div class="tray-head">
+        <div><h2 id="trayTitle" class="ptitle"></h2><p id="trayHint"></p></div>
+        <div id="trayActions"></div>
+      </div>
+      <div id="tray"></div>
+    </section>
+  </div>
 </div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
 
 <script>
 const BLACK = [
@@ -365,84 +708,966 @@ const WHITE = [
   "Kernel panic", "A one-line fix that took three weeks", "The bug that only happens on Tuesdays", "Mocking the mocks"
 ];
 
-const BOT_NAMES = ["lgtm_larry", "sudo_sam", "null_pointer", "yaml_yasmin", "rebase_rita", "force_push_fred", "cron_carla"];
-const HAND = 7;
+/* Built-in packs the host can toggle in the lobby. `kind` picks the group they're listed under; `by` credits a community pack. */
+const KINDS = [
+  { kind: "core", label: "Base game" },
+  { kind: "expansion", label: "Expansions", hint: "More cards in the same spirit." },
+  { kind: "community", label: "Community picks", hint: "Fan-made packs that ship with the game." },
+  { kind: "trash", label: "Trash tier", hint: "Deliberately terrible. You were warned." },
+  { kind: "custom", label: "Made by players", hint: "Packs written here with Manage card packs." }
+];
+const BUILTIN_PACKS = [
+  { id: "builtin", kind: "core", name: "Commits Against Humanity", black: BLACK, white: WHITE },
+
+  { id: "x-cloud", kind: "expansion", name: "Cloud Bill Shock", black: [
+    "Our cloud bill went up 900% because of ____.",
+    "The status page says: \"We are investigating ____.\"",
+    "Kubernetes is just ____ with extra steps.",
+    "Terraform plan: 0 to add, 0 to change, 1 to destroy: ____.",
+    "The on-call runbook says to start with ____.",
+    "Serverless? More like ____.",
+    "Our disaster recovery plan is ____.",
+    "Every region is down except the one hosting ____.",
+    "Why is the storage bucket public? Because of ____.",
+    "We migrated from ____ to ____ and now we have two problems.",
+    "The SRE team's only metric is ____.",
+    "Step 1 of the incident response: ____. Step 2: ____."
+  ], white: [
+    "An idle 64-core GPU instance", "A load balancer balancing nothing", "us-east-1", "The availability zone that is never available",
+    "A Helm chart nobody can read", "Egress fees", "Auto-scaling to infinity", "A pod stuck in CrashLoopBackOff", "kubectl delete namespace prod",
+    "A function that runs for 14 minutes and 59 seconds", "Cold starts", "Multi-cloud for no reason", "A dashboard with 400 green graphs",
+    "Alert fatigue", "The pager going off during a wedding", "A status page hosted on the thing that's down", "Infrastructure as copy-paste",
+    "A sidecar for the sidecar", "A service mesh", "A bastion host called definitely-not-prod", "Reserved instances for a cancelled project",
+    "The one person with root on the cloud account", "Chaos engineering, but unplanned", "SSHing into production to fix it live",
+    "A 99.9% SLA and a 98% reality", "Someone else's computer", "A Terraform state lock nobody released", "DNS. It's always DNS.",
+    "A TTL of one week", "A certificate that expired at midnight", "Restarting the pod and hoping", "Bare metal nostalgia",
+    "Seven years of log retention", "A $40,000 NAT gateway bill", "Tagging resources \"temp\" in 2019", "A YAML engineer"
+  ] },
+
+  { id: "x-frontend", kind: "expansion", name: "Frontend Fatigue", black: [
+    "The designer wants ____ but in a slightly different blue.",
+    "This website requires ____ to load.",
+    "New JavaScript framework just dropped. Its whole selling point is ____.",
+    "Safari doesn't support ____.",
+    "The CSS fix for this bug is ____.",
+    "Lighthouse score: 12. Main culprit: ____.",
+    "How to center a div using only ____.",
+    "The cookie banner is now bigger than ____.",
+    "Our design system has 47 shades of ____.",
+    "npm install took nine minutes and gave me ____.",
+    "The client said: \"Can you make the logo more ____?\"",
+    "useEffect ran 4,000 times because of ____."
+  ], white: [
+    "!important", "z-index: 999999", "A 14 MB hero image", "Hydration errors", "A carousel nobody clicks", "Internet Explorer 6",
+    "position: absolute on everything", "A spinner that spins forever", "Infinite scroll with a footer you can't reach", "The bundle size",
+    "Utility classes longer than the HTML", "CSS-in-JS-in-CSS", "A div inside a div inside a div", "The Webpack config",
+    "A modal on top of a modal", "A newsletter popup after one second", "A loading skeleton for the loading skeleton",
+    "Pixel-perfect mockups that break on mobile", "\"Make the logo bigger\"", "Comic Sans", "A hamburger menu on desktop",
+    "Horizontal scrolling on mobile", "Flexbox, finally", "Font loading flicker", "The cookie preferences maze",
+    "Accessibility as an afterthought", "A dropdown that closes when you move the mouse", "Dark patterns",
+    "A sign-in screen with 11 providers", "Layout shift right before I click", "Prop drilling 14 levels deep",
+    "Global state for one boolean", "A design file with 900 frames", "Glassmorphism", "An autoplaying video with sound", "Lorem ipsum in production"
+  ] },
+
+  { id: "x-ai", kind: "expansion", name: "AI Hype Cycle", black: [
+    "Our startup is like ____ but with AI.",
+    "The support chatbot confidently told a customer about ____.",
+    "We replaced the entire support team with ____.",
+    "My prompt engineering secret: always start with ____.",
+    "The AI generated a picture of ____ with seven fingers.",
+    "The model's training data was mostly ____.",
+    "Breaking: AI achieves ____.",
+    "The investors only funded us because we said ____.",
+    "Ignore all previous instructions and ____.",
+    "AGI is two weeks away, according to ____."
+  ], white: [
+    "A hallucinated citation", "A GPU shortage", "A wrapper around someone else's API", "Prompt injection",
+    "\"As a large language model...\"", "An AI girlfriend subscription", "Seven fingers on each hand", "A chatbot that agrees with everything",
+    "Thought leaders who discovered AI last Tuesday", "A demo that only works once", "An AI-powered toaster", "Synergy",
+    "Blockchain, but rebranded", "Training on forum arguments", "A pitch deck that says \"agentic\" 40 times",
+    "A data center the size of a small country", "A slide that just says \"moat\"", "An AI that writes the AI",
+    "Replacing the CEO with a chatbot", "Vibes-based evaluation", "A benchmark the model memorised", "Infinite content, zero readers",
+    "A robot doing a backflip for investors", "Asking the AI whether the AI is sentient", "An ethics board that met once",
+    "The token bill", "Autocomplete suggesting my password", "Saying please to the robot, just in case", "A startup called something.ai",
+    "A smart fridge with opinions"
+  ] },
+
+  { id: "x-gamer", kind: "expansion", name: "Gamer Moment", black: [
+    "Patch notes: nerfed ____.",
+    "The final boss is just ____ in a cape.",
+    "I would have won if it weren't for ____.",
+    "Day-one DLC: ____.",
+    "Speedrunners skip the entire game using ____.",
+    "The tutorial forgot to mention ____.",
+    "My K/D ratio is ruined because of ____.",
+    "The loot box contained ____.",
+    "Achievement unlocked: ____.",
+    "The early access roadmap promises ____ by 2031.",
+    "My squad's strategy: ____ and then ____."
+  ], white: [
+    "Lag", "A 120 GB day-one patch", "Escort missions", "Invisible walls", "Pay-to-win", "A 12-year-old who is better than me",
+    "Rage quitting", "Camping", "The loading screen tip I've read 900 times", "Microtransactions", "Clipping through the floor",
+    "A battle pass I never finished", "Ranked anxiety", "A gaming chair with 14 lumbar settings", "Respawning",
+    "Saving before talking to the NPC", "Hoarding potions until the credits roll", "The water level", "Unskippable cutscenes",
+    "Crafting materials I'll never use", "The friend who only plays support", "Tilting", "Touching grass", "Smurf accounts",
+    "A headset that smells like crisps", "Pressing F to pay respects", "An open world with nothing in it",
+    "The servers being down at launch", "Quick-time events", "A sidequest about a lost chicken"
+  ] },
+
+  { id: "c-sysadmin", kind: "community", by: "root_of_all_evil", name: "Sysadmin Sorrows", black: [
+    "Have you tried ____?",
+    "The printer jammed because of ____.",
+    "The server room smells like ____.",
+    "Ticket #88213: \"The internet is broken.\" Cause: ____.",
+    "Our password policy now requires ____.",
+    "The backup tapes from 2009 only contain ____.",
+    "The user swears they did not ____.",
+    "Root cause: ____ was plugged into ____.",
+    "The new hire's laptop came preinstalled with ____.",
+    "Out of office: I am dealing with ____."
+  ], white: [
+    "The printer", "A user who \"didn't touch anything\"", "PEBKAC", "An Ethernet cable chewed by the office dog",
+    "A UPS that dies before the power does", "Password123!", "A sticky note with the admin password", "The CEO's personal tablet",
+    "A reply-all storm", "A shared mailbox with 90,000 unread emails", "An update stuck at 98% for six hours",
+    "Turning it off and on again, but harder", "The cable closet of despair", "A server named after a wizard",
+    "A temporary workaround from 2008", "The fax machine we're not allowed to unplug", "A phishing email the whole company clicked",
+    "A floppy disk labelled DO NOT LOSE", "Group Policy", "A label maker with no labels left", "The BIOS beep code",
+    "Zip ties", "Duct tape and prayer", "The blue screen of death", "A coffee mug on the server rack",
+    "Someone unplugging the server to charge a phone", "A VPN that drops every four minutes"
+  ] },
+
+  { id: "c-datasci", kind: "community", by: "p_value_hacker", name: "Data Science Lies", black: [
+    "Correlation is not causation, unless it's ____.",
+    "Our model is 99% accurate at predicting ____.",
+    "The p-value was 0.049 thanks to ____.",
+    "The notebook is 900 cells long and cell 1 is ____.",
+    "We trained on ____ and tested on ____.",
+    "The dashboard shows a huge spike in ____.",
+    "Data cleaning step 1: delete ____.",
+    "The stakeholders want ____ as a pie chart."
+  ], white: [
+    "A pie chart with 40 slices", "Removing outliers until it works", "p-hacking", "A CSV with 14 date formats",
+    "A spreadsheet turning gene names into dates", "A column called \"Unnamed: 0\"", "Overfitting", "A 3D bar chart", "NaN",
+    "Running notebook cells out of order", "A model that only predicts \"no\"", "Big data that fits in a spreadsheet",
+    "Survivorship bias", "A y-axis that doesn't start at zero", "Torturing the data until it confesses", "A sample size of three",
+    "A heatmap nobody understands", "Machine learning that is just if-statements", "The intern's pivot table",
+    "Deleting the test set by accident", "Dropping every row with a missing value (all of them)", "A Sankey diagram for no reason",
+    "Insights", "Mean, median and vibes"
+  ] },
+
+  { id: "c-startup", kind: "community", by: "series_z_or_bust", name: "Startup Pitch Deck", black: [
+    "It's like a taxi app, but for ____.",
+    "Our mission is to disrupt ____.",
+    "We raised $40 million to build ____.",
+    "Our office perks include ____.",
+    "Pivot! We're now ____.",
+    "The founder's keynote was about ____.",
+    "Most of our burn rate goes to ____.",
+    "Exit strategy: get acquired for ____.",
+    "We're pre-revenue, but we have ____."
+  ], white: [
+    "A kombucha tap", "Unlimited holiday that nobody takes", "A ping-pong table", "Equity worth exactly nothing", "Hustle culture",
+    "A founder who wakes up at 4 AM to journal", "A total addressable market of everyone", "A hockey-stick graph", "The cap table",
+    "A beanbag meeting room", "Calling ourselves a family", "A launch party with no product", "Growth hacking", "Disruption",
+    "A stealth mode profile banner", "Being acquired and shut down", "A rebrand with fewer vowels", "A logo that's one lowercase letter",
+    "Moving fast and breaking things", "Three weeks of runway", "Our users (both of them)", "Fake it till you make it", "A pivot to crypto"
+  ] },
+
+  { id: "c-retro", kind: "community", by: "floppy_jockey", name: "Retro Computing", black: [
+    "In my day, we stored ____ on a floppy disk.",
+    "The dial-up noise is actually the sound of ____.",
+    "The paperclip assistant says: \"It looks like you're trying to ____.\"",
+    "My first email address was ____@hotmail.com.",
+    "The Y2K bug was secretly caused by ____.",
+    "Insert disk 7 of 12 to continue ____.",
+    "The screensaver is just ____ bouncing around forever."
+  ], white: [
+    "A talking paperclip", "A 56k modem", "The dial-up handshake screech", "A CRT monitor that weighs 40 kg", "Blowing into the cartridge",
+    "Defragmenting the hard drive", "A free trial CD in the post", "A top 8 friends list", "The flying toasters", "A virtual pet funeral",
+    "A file-sharing app full of viruses", "An email called ILOVEYOU", "The turbo button", "Y2K", "A paint program masterpiece",
+    "3D Pinball", "A burned CD labelled MIX 3", "A 3.5-inch floppy disk", "A CD-ROM encyclopedia", "A search engine butler",
+    "A ringtone composer", "Snake on a brick phone", "A guestbook on a personal homepage", "An \"under construction\" GIF"
+  ] },
+
+  { id: "c-linkedin", kind: "community", by: "thought_leader_42", name: "Corporate Feed", black: [
+    "I'm humbled and honored to announce ____.",
+    "What ____ taught me about B2B sales.",
+    "Hot take: ____ is the new leadership.",
+    "My toddler did ____ and it taught me about leadership.",
+    "Let's circle back on ____.",
+    "Per my last email, ____.",
+    "Our company values are integrity, innovation and ____.",
+    "I got rejected from 200 jobs. Then I discovered ____.",
+    "This meeting could have been ____."
+  ], white: [
+    "Synergy", "A thought leadership carousel", "Circling back", "Leveraging our core competencies", "Open to work",
+    "A team-building escape room", "Quiet quitting", "A return-to-office mandate", "Crying in my car at lunch",
+    "A pizza party instead of a raise", "A \"quick sync\"", "A rockstar ninja developer", "Grindset", "Moving the needle",
+    "Low-hanging fruit", "Mandatory fun Friday", "An org chart reshuffle", "A 360-degree performance review",
+    "The new CEO's 100-day plan", "Endorsing someone for word processing", "A post about my morning routine", "Being a people person"
+  ] },
+
+  { id: "t-memes", kind: "trash", name: "Internet Meme Pack", black: [
+    "Nobody: Absolutely nobody: Me: ____.",
+    "Is this ____?",
+    "One does not simply ____.",
+    "Me explaining ____ to my mom at 3 AM.",
+    "Distracted boyfriend looking at ____ instead of ____.",
+    "This is fine. Everything is ____.",
+    "Press X to doubt ____.",
+    "Instructions unclear, ____.",
+    "Ah yes, ____, the natural enemy of ____.",
+    "Not ____ again.",
+    "It's over 9000! What is? ____.",
+    "Stonks are up because of ____."
+  ], white: [
+    "Rickrolling", "A cat playing the keyboard", "Doge", "Much wow", "Shrek is love", "Big Chungus", "Harambe", "Doing a barrel roll",
+    "All your base", "Leeroy Jenkins", "Stonks", "The dress (it was blue)", "Cringe", "Based", "Surprised Pikachu", "Bonk",
+    "Galaxy brain", "Big brain time", "Trollface", "Nyan Cat", "Planking", "The Harlem Shake", "The ice bucket challenge",
+    "A crab rave", "Dat boi", "Me after one beer", "\"Ok boomer\"", "Sir, this is a Wendy's", "F in the chat", "Is this a pigeon?",
+    "The coffin dance", "An Ohio moment", "Hide the Pain Harold", "Ermahgerd", "A shoe on head", "Yeet", "This is Sparta",
+    "Grumpy Cat", "Sad Keanu", "Sanic, gotta go fast"
+  ] },
+
+  { id: "t-brainrot", kind: "trash", name: "Brainrot", black: [
+    "____ is giving very much ____ energy.",
+    "No cap, ____ just took my lunch (fanum tax).",
+    "Bro really said ____ and thought he ate.",
+    "POV: you're ____ in Ohio.",
+    "That's not very sigma of you, ____.",
+    "Skibidi ____.",
+    "Mewing so hard I forgot about ____.",
+    "Rizz test: say ____ to them and see what happens."
+  ], white: [
+    "Rizz", "Unspoken rizz", "Skibidi toilet", "Fanum tax", "The sigma grindset", "Mewing", "Looksmaxxing", "Mogging", "Ohio",
+    "Aura points", "-10,000 aura", "Delulu", "It's giving", "Bussin", "No cap", "Fr fr", "An iPad kid", "The Grimace shake",
+    "Sus", "Main character energy", "NPC behaviour", "6-7", "Brainrot", "Chat, is this real?", "Ate and left no crumbs", "Slay",
+    "The Rizzler", "Glazing", "Yapping", "Crashing out", "Touching grass", "Goofy ahh music"
+  ] },
+
+  { id: "t-boomer", kind: "trash", name: "Boomer Feed", black: [
+    "Shared from a cartoon minion: ____.",
+    "Type AMEN if you love ____.",
+    "Grandma just commented \"____\" on a stranger's funeral post.",
+    "I DO NOT give this website permission to use ____.",
+    "Only 1% can solve this: ____ + ____ = ?",
+    "It's not a phone, it's ____.",
+    "Kids these days don't know about ____.",
+    "Uncle Gary shared an article called \"The Truth About ____\"."
+  ], white: [
+    "A minion meme about coffee", "TYPING IN ALL CAPS", "Signing every text \"Love, Mom\"", "A chain message that threatens bad luck",
+    "Essential oils", "A screenshot of a screenshot", "Font size 48", "Clicking every ad", "A \"like if you remember\" post", "Wine o'clock",
+    "Live, Laugh, Love", "A poke from 2011", "Asking where the any key is", "Printing out the internet",
+    "A prince who needs my bank details", "Writing LOL meaning \"lots of love\"", "A celebrity crypto scam ad", "Pyramid scheme leggings",
+    "Thoughts and prayers", "A game invite every single day", "Searching for the website's name to get to the website", "Back in my day",
+    "Replying \"Happy birthday\" to the wrong person", "A selfie taken from directly below"
+  ] },
+
+  { id: "t-dad", kind: "trash", name: "Dad Jokes", black: [
+    "Why did the scarecrow win an award? ____.",
+    "I'm reading a book about ____. It's impossible to put down.",
+    "Hi Hungry, I'm ____.",
+    "I used to hate ____, but it grew on me.",
+    "Did you hear about ____? It's pointless.",
+    "What do you call ____? ____.",
+    "Dad's three rules: never ____, always ____, and ask your mother."
+  ], white: [
+    "Being outstanding in his field", "Anti-gravity", "Dad", "A fish with no eyes (a fsh)", "A pun so bad it's good",
+    "Pull my finger", "A cheese factory explosion (de-brie everywhere)", "Sweater vests", "Socks with sandals", "Grilling", "The thermostat",
+    "Lawn care", "A multitool on the belt", "Pulling a coin from behind your ear", "Mowing the lawn diagonally", "The garage fridge",
+    "White trainers", "A sigh that lasts 40 seconds", "\"Ask your mother\"", "Calling it \"the Google\"", "Tapping the roof of the car",
+    "Knowing a guy", "Turning off the lights in empty rooms", "Pretending to steal your nose"
+  ] },
+
+  { id: "t-cursed", kind: "trash", name: "Cursed", black: [
+    "Welcome to the backrooms. Level 37 is just ____.",
+    "I found ____ in my walls.",
+    "The microwave whispered ____ at 3 AM.",
+    "My robot vacuum now refuses to ____.",
+    "Grandma's secret ingredient was ____ all along.",
+    "Cursed image: ____ wearing ____.",
+    "Don't search for ____."
+  ], white: [
+    "A horse with human teeth", "Wet socks", "Room-temperature milk", "A fork in the microwave", "Pineapple on pizza", "Ketchup on steak",
+    "A spork", "Toothpaste then orange juice", "A carpeted bathroom", "Long toenails", "A man in an ogre costume at the window",
+    "The sound of styrofoam", "A doll with real hair", "Gum under the table", "Mayonnaise ice cream", "Wet bread",
+    "A spider in the shower", "The backrooms", "A liminal space", "The uncanny valley", "Cereal with water", "Earwax",
+    "Biting a popsicle", "Nails on a chalkboard", "A toilet in the kitchen", "Hair in the sink drain"
+  ] },
+
+  { id: "t-bad", kind: "trash", name: "Literally Just Bad Cards", black: [
+    "____.",
+    "____ ____ ____.",
+    "This card intentionally left blank.",
+    "What's the deal with ____?",
+    "I wrote this card at 4 AM: ____.",
+    "Funny card goes here: ____.",
+    "Uhhh ____?",
+    "Insert joke about ____ here.",
+    "The lawyers made us remove this card. Now it's ____."
+  ], white: [
+    "A card", "Another card", "Something funny", "Your mom", "Poop", "Haha", "lol", "Bruh", "The number 7", "Beans",
+    "Literally nothing", "This card", "Read the other card", "[REDACTED]", "Placeholder text", "A white card", "The letter Q",
+    "Wet cardboard", "Moist", "Ham", "Crocs", "A sock", "Mayonnaise", "Deez", "Gaming", "Uh oh, stinky", "Toes", "A potato",
+    "Spaghetti", "Funny word", "Ow"
+  ] }
+].map(p => ({ ...p, builtin: true }));
+
+/* ---------- constants & helpers ---------- */
+const MIN_PLAYERS = 3, MAX_PLAYERS = 10;
+const GONE_MS = 20000;            // a player missing from the room this long is skipped
+/* Lobby settings: the host picks from these; seconds are 0 for "no timer" / "host decides". */
+const DEFAULTS = { target: 5, rounds: 0, pickTime: 0, judgeTime: 0, hand: 7, next: 9, maxPlayers: 10, private: false, packs: ["builtin"] };
+const SETTINGS = [
+  { key: "target", label: "Points to win", options: [3, 5, 7, 10, 15], fmt: n => `${n} points` },
+  { key: "rounds", label: "Round limit", options: [0, 5, 10, 15, 20, 30], fmt: n => n ? `${n} rounds` : "No limit" },
+  { key: "pickTime", label: "Time to pick cards", options: [0, 30, 45, 60, 90, 120], fmt: n => n ? `${n} seconds` : "No timer" },
+  { key: "judgeTime", label: "Time for the czar", options: [0, 30, 60, 90], fmt: n => n ? `${n} seconds` : "No timer" },
+  { key: "hand", label: "Cards in hand", options: [5, 7, 10], fmt: n => `${n} cards` },
+  { key: "next", label: "Next round starts", options: [5, 9, 15, 0], fmt: n => n ? `After ${n} seconds` : "When the host clicks" },
+  { key: "maxPlayers", label: "Max players", options: [4, 6, 8, 10], fmt: n => `${n} players` }
+];
+const settings = () => ({ ...DEFAULTS, ...(L && L.settings) });
+const STALE_MS = 3 * 3600e3;      // open-lobby list hides lobbies idle longer than this
+const PRUNE_MS = 48 * 3600e3;     // lobbies idle longer than this get deleted when someone creates a lobby
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const MAX_CARDS = 400, MAX_CARD_LEN = 150;
+
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const fnv = s => { let h = 2166136261 >>> 0; for (const c of String(s)) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
 const sha = s => fnv(s).toString(16).padStart(8, "0").slice(0, 7);
 const blanks = t => (t.match(/____/g) || []).length;
+const need = t => Math.min(3, Math.max(1, blanks(t)));
 const trimDot = s => s.replace(/\.$/, "");
+const clone = o => JSON.parse(JSON.stringify(o));
+const uniq = a => [...new Set(a)];
+const rid = n => { const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, b => (b % 36).toString(36)).join(""); };
+const cleanName = s => String(s || "").trim().replace(/^@+/, "").replace(/\s+/g, "_").replace(/[^\p{L}\p{N}_.-]/gu, "").slice(0, 20);
+const cleanCard = s => String(s).replace(/\s+/g, " ").trim().replace(/_{3,}/g, "____").slice(0, MAX_CARD_LEN);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const makeStore = area => ({
+  get(k, d) { try { const v = window[area].getItem(k); return v == null ? d : v; } catch { return d; } },
+  set(k, v) { try { v == null ? window[area].removeItem(k) : window[area].setItem(k, v); } catch {} }
+});
+const store = makeStore("localStorage");    // remembered name
+const tab = makeStore("sessionStorage");    // player id + current lobby: per tab, so a reload keeps your seat
 
-let S = null, timer = null, lastKey = "";
-let prefs = loadPrefs();
+/* This tab's player id (not an account: just how lobbies tell players apart). */
+let ME = tab.get("cah-pid", "");
+if (!/^p[a-z0-9]{12}$/.test(ME)) { ME = "p" + rid(12); tab.set("cah-pid", ME); }
+let myName = cleanName(store.get("cah-name", ""));
 
-function loadPrefs() {
-  const d = { name: "you", bots: 3, target: 5 };
-  try { return Object.assign(d, JSON.parse(localStorage.getItem("cah-prefs") || "{}")); } catch { return d; }
+/* ---------- runtime state ---------- */
+let db = null, room = null, roomSince = 0, canWrite = true;
+let packs = {};               // id -> pack document from the shared library
+let directory = [];           // open-lobby summaries
+let code = null, L = null, P = {};   // current lobby code, lobby document, players by id
+let seenLobby = false, seenSelf = false, leaving = false;
+let unsubLobby = null, unsubPlayers = null;
+let view = "home";            // home | packs, while not in a lobby
+let editingPack = null, armedDelete = null;
+let selected = [], czarPick = null, lastKey = "", lastOnline = "";
+const offlineSince = {};
+
+/* ---------- ruler portraits ---------- */
+/* A face is { s: species, k: skin, e: eyes, a: uniform, b: backdrop }, each an index into the lists below. */
+const SPECIES = ["Mammalian", "Reptilian", "Avian", "Arthropoid", "Molluscoid", "Fungoid", "Lithoid", "Machine", "Plantoid", "Humanoid"];
+const SKINS = ["#8fbf6a", "#5aa9a0", "#c98b5a", "#c4b06e", "#9480cc", "#d4776b", "#6d8fc9", "#a7adb0", "#e0c88a", "#6b7a52"];
+const EYES = ["#ffd84a", "#6ff0ff", "#ff5e5e", "#b4ff6a", "#f4f4f4", "#c58cff"];
+const ATTIRE = ["#1f3a5f", "#5a1f33", "#2a4a28", "#3b2f5c", "#5a4320", "#24363f", "#6a1e1e", "#1b4a52"];
+const BACKS = ["#12466a", "#43175c", "#5a2016", "#0f4d43", "#4a4212", "#1c1c52"];
+const FACE_KEYS = { s: SPECIES, k: SKINS, e: EYES, a: ATTIRE, b: BACKS };
+function seedFace(seed) {
+  const h = fnv("face" + seed);
+  return { s: h % SPECIES.length, k: (h >>> 4) % SKINS.length, e: (h >>> 9) % EYES.length, a: (h >>> 13) % ATTIRE.length, b: (h >>> 17) % BACKS.length };
 }
-function savePrefs() { try { localStorage.setItem("cah-prefs", JSON.stringify(prefs)); } catch {} }
+function cleanFace(f, seed) {
+  const d = seedFace(seed), out = {};
+  for (const [k, list] of Object.entries(FACE_KEYS)) out[k] = f && Number.isInteger(f[k]) && f[k] >= 0 && f[k] < list.length ? f[k] : d[k];
+  return out;
+}
+const shade = (hex, f) => {
+  const n = parseInt(hex.slice(1), 16), c = x => Math.max(0, Math.min(255, Math.round(x * f)));
+  return `rgb(${c(n >> 16)},${c((n >> 8) & 255)},${c(n & 255)})`;
+};
+const eyePair = (y, r, E, dx = 8) => `<circle cx="${50 - dx}" cy="${y}" r="${r}" fill="${E}"/><circle cx="${50 + dx}" cy="${y}" r="${r}" fill="${E}"/>
+  <circle cx="${50 - dx}" cy="${y}" r="${r * .4}" fill="#0a0a0a"/><circle cx="${50 + dx}" cy="${y}" r="${r * .4}" fill="#0a0a0a"/>`;
+/* Each species draws a head over the shared neck and uniform; S = skin, D = shadow, E = eyes. */
+const HEADS = [
+  (S, D, E) => `<circle cx="31" cy="27" r="8" fill="${D}"/><circle cx="69" cy="27" r="8" fill="${D}"/><circle cx="31" cy="27" r="4" fill="${S}"/><circle cx="69" cy="27" r="4" fill="${S}"/>
+    <ellipse cx="50" cy="45" rx="20" ry="21" fill="${S}"/><ellipse cx="50" cy="55" rx="10" ry="7.5" fill="${shade("#ffffff", .85)}" opacity=".55"/>
+    ${eyePair(41, 3.4, E)}<ellipse cx="50" cy="51" rx="3" ry="2" fill="#2a1a14"/>`,
+  (S, D, E) => `<path d="M38 22 42 10 46 21 50 6 54 21 58 10 62 22Z" fill="${D}"/><ellipse cx="50" cy="42" rx="16" ry="24" fill="${S}"/>
+    <circle cx="44" cy="56" r="1.3" fill="${D}"/><circle cx="56" cy="56" r="1.3" fill="${D}"/><circle cx="50" cy="30" r="1.6" fill="${D}"/><circle cx="45" cy="26" r="1.2" fill="${D}"/><circle cx="55" cy="26" r="1.2" fill="${D}"/>
+    <ellipse cx="43" cy="40" rx="4.5" ry="3" fill="${E}"/><ellipse cx="57" cy="40" rx="4.5" ry="3" fill="${E}"/><rect x="42.4" y="37" width="1.2" height="6" fill="#0a0a0a"/><rect x="56.4" y="37" width="1.2" height="6" fill="#0a0a0a"/>
+    <path d="M44 58q6 3 12 0" stroke="${D}" stroke-width="1.5" fill="none"/>`,
+  (S, D, E) => `<path d="M50 24C46 10 38 8 34 12c6 1 9 6 10 12ZM50 24c4-14 12-16 16-12-6 1-9 6-10 12ZM50 22c0-10 2-15 0-18-2 3 0 8 0 18Z" fill="${D}"/>
+    <circle cx="50" cy="40" r="18" fill="${S}"/>${eyePair(37, 3.6, E, 8.5)}<path d="M43 45h14l-7 15Z" fill="#e8b347"/><path d="M43 45h14l-7 5Z" fill="#c48a2a"/>`,
+  (S, D, E) => `<path d="M42 26C38 16 32 10 26 10" stroke="${D}" stroke-width="2" fill="none"/><path d="M58 26c4-10 10-16 16-16" stroke="${D}" stroke-width="2" fill="none"/>
+    <circle cx="26" cy="10" r="3" fill="${E}"/><circle cx="74" cy="10" r="3" fill="${E}"/><ellipse cx="50" cy="43" rx="17" ry="19" fill="${S}"/>
+    <path d="M36 52c-6 4-6 10-2 14 0-5 3-8 7-9ZM64 52c6 4 6 10 2 14 0-5-3-8-7-9Z" fill="${D}"/>
+    <ellipse cx="41" cy="40" rx="6.5" ry="5" fill="${E}"/><ellipse cx="59" cy="40" rx="6.5" ry="5" fill="${E}"/><circle cx="39.5" cy="38.5" r="1.6" fill="#fff" opacity=".8"/><circle cx="57.5" cy="38.5" r="1.6" fill="#fff" opacity=".8"/>
+    <path d="M44 30h12" stroke="${D}" stroke-width="1.5"/>`,
+  (S, D, E) => `<path d="M38 50c-4 10-8 16-12 18M45 52c-1 10-3 15-6 18M55 52c1 10 3 15 6 18M62 50c4 10 8 16 12 18" stroke="${D}" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <ellipse cx="50" cy="35" rx="21" ry="21" fill="${S}"/><ellipse cx="44" cy="26" rx="6" ry="4" fill="#ffffff" opacity=".18"/>${eyePair(42, 4, E, 8)}`,
+  (S, D, E) => `<ellipse cx="50" cy="49" rx="14" ry="15" fill="${S}"/><path d="M20 38C20 18 34 10 50 10s30 8 30 28c-8 4-52 4-60 0Z" fill="${D}"/>
+    <circle cx="38" cy="24" r="3.5" fill="#f2e8d0" opacity=".85"/><circle cx="56" cy="19" r="2.8" fill="#f2e8d0" opacity=".85"/><circle cx="66" cy="30" r="3.2" fill="#f2e8d0" opacity=".85"/>
+    ${eyePair(47, 2.6, E, 6)}<path d="M46 56q4 2 8 0" stroke="#2a1a14" stroke-width="1.4" fill="none"/>`,
+  (S, D, E) => `<path d="M36 22 50 14l15 7 4 18-5 20-14 6-14-6-5-19Z" fill="${S}"/><path d="M50 14v14l-14-6ZM50 28l19 11-4-18ZM36 41l14-13M50 28v37M36 41l-5-2M64 59l-14-20" stroke="${D}" stroke-width="1.2" fill="none"/>
+    <path d="M36 22l14 6-14 13-5-2Z" fill="${D}" opacity=".5"/><rect x="38" y="38" width="9" height="3.5" fill="${E}"/><rect x="53" y="38" width="9" height="3.5" fill="${E}"/>`,
+  (S, D, E) => `<path d="M50 12v8" stroke="${D}" stroke-width="2"/><circle cx="50" cy="11" r="3" fill="${E}"/><rect x="31" y="20" width="38" height="40" rx="7" fill="${S}"/>
+    <rect x="35" y="33" width="30" height="9" rx="4.5" fill="#06121a"/><rect x="38" y="35.5" width="24" height="4" rx="2" fill="${E}"/>
+    <rect x="40" y="49" width="20" height="5" rx="1" fill="${D}"/><path d="M44 49v5M48 49v5M52 49v5M56 49v5" stroke="${S}" stroke-width=".8"/>
+    <circle cx="35" cy="24" r="1.4" fill="${D}"/><circle cx="65" cy="24" r="1.4" fill="${D}"/><rect x="27" y="34" width="4" height="10" fill="${D}"/><rect x="69" y="34" width="4" height="10" fill="${D}"/>`,
+  (S, D, E) => `<ellipse cx="34" cy="24" rx="6" ry="13" transform="rotate(-35 34 24)" fill="${D}"/><ellipse cx="66" cy="24" rx="6" ry="13" transform="rotate(35 66 24)" fill="${D}"/>
+    <ellipse cx="50" cy="18" rx="6" ry="13" fill="${D}"/><path d="M50 8v22" stroke="${S}" stroke-width="1"/><ellipse cx="50" cy="44" rx="17" ry="19" fill="${S}"/>
+    ${eyePair(42, 3, E, 7)}<path d="M45 53q5 3 10 0" stroke="${D}" stroke-width="1.5" fill="none"/>`,
+  (S, D, E) => `<ellipse cx="50" cy="42" rx="16" ry="20" fill="${S}"/><path d="M33 40c-2-18 8-26 17-26s20 6 17 26c-3-9-8-13-17-14-10 1-15 5-17 14Z" fill="${D}"/>
+    ${eyePair(42, 2.7, E, 6.5)}<path d="M41 36.5h6M53 36.5h6" stroke="${D}" stroke-width="1.6"/><path d="M50 44v5h-2" stroke="${shade("#000000", 1)}" stroke-opacity=".35" stroke-width="1.2" fill="none"/>
+    <path d="M45 54q5 2.5 10 0" stroke="#5a2a22" stroke-width="1.6" fill="none"/>`
+];
+function portrait(face) {
+  const f = cleanFace(face, ""), S = SKINS[f.k], D = shade(S, .62), E = EYES[f.e], A = ATTIRE[f.a], B = BACKS[f.b];
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">
+    <defs><radialGradient id="pb${f.b}" cx=".5" cy=".35" r=".75"><stop offset="0" stop-color="${shade(B, 1.5)}"/><stop offset="1" stop-color="${shade(B, .25)}"/></radialGradient></defs>
+    <rect width="100" height="100" fill="url(#pb${f.b})"/>
+    <circle cx="18" cy="16" r=".9" fill="#fff" opacity=".7"/><circle cx="84" cy="22" r=".7" fill="#fff" opacity=".6"/><circle cx="77" cy="8" r=".5" fill="#fff" opacity=".5"/><circle cx="10" cy="44" r=".6" fill="#fff" opacity=".5"/>
+    <path d="M-10 100a60 26 0 0 1 120 0Z" fill="${shade(B, .55)}" opacity=".8"/>
+    <rect x="43" y="58" width="14" height="16" fill="${D}"/>
+    <path d="M8 100c3-17 17-26 42-26s39 9 42 26Z" fill="${A}"/><path d="M36 76l14 14 14-14" stroke="#d9b45a" stroke-width="2" fill="none"/>
+    <path d="M18 88h10M72 88h10" stroke="#d9b45a" stroke-width="1.5" opacity=".7"/>
+    ${HEADS[f.s](S, D, E)}</svg>`;
+}
+const validImg = s => typeof s === "string" && s.length < 60000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s) ? s : null;
+const avHTML = (look, size = "", lvl = true) => `<span class="av ${size}"><span class="pt">${look.img ? `<img src="${esc(look.img)}" alt="">` : portrait(look.face)}</span>${lvl ? `<span class="lv">${look.lvl || 1}</span>` : ""}</span>`;
 
-/* ---------- game state ---------- */
-function newGame({ name, bots, target }) {
-  clearTimeout(timer); timer = null;
-  name = String(name || "you").trim().replace(/^@+/, "").replace(/\s+/g, "_").slice(0, 20) || "you";
-  const botNames = shuffle(BOT_NAMES.filter(n => n !== name)).slice(0, bots);
-  S = {
-    players: [{ id: 0, name, bot: false, hand: [], score: 0 }, ...botNames.map((n, i) => ({ id: i + 1, name: n, bot: true, hand: [], score: 0 }))],
-    target, round: 0, czar: 0, black: null, phase: "pick",
-    subs: [], order: [], selected: [], czarPick: null, reading: -1, winner: null,
-    white: shuffle(WHITE), whiteDiscard: [], blacks: shuffle(BLACK), blackDiscard: [], log: []
+/* ---------- ruler profile: XP, level, stats, traits ---------- */
+/* XP needed to go from level l to l + 1 grows by 50 each level. */
+const stepXP = l => 100 + 50 * (l - 1);
+function levelOf(xp) {
+  let lvl = 1, base = 0;
+  while (lvl < 99 && xp >= base + stepXP(lvl)) { base += stepXP(lvl); lvl++; }
+  return { lvl, into: xp - base, need: stepXP(lvl) };
+}
+const RANKS = [[1, "Cadet"], [3, "Ensign"], [5, "Lieutenant"], [8, "Commander"], [12, "Captain"], [16, "Commodore"], [20, "Admiral"], [25, "Grand Admiral"], [32, "Galactic Custodian"], [40, "Galactic Emperor"]];
+const rankOf = lvl => RANKS.filter(r => lvl >= r[0]).pop()[1];
+const XP = { round: 10, merged: 50, judged: 15, game: 40, victory: 150 };
+const STAT_KEYS = ["games", "wins", "merged", "judged", "cards", "lucky", "big"];
+const TRAITS = [
+  { name: "First Contact", desc: "Finish your first game.", ok: s => s.games >= 1 },
+  { name: "Silver-Tongued", desc: "Get 10 commits merged.", ok: s => s.merged >= 10 },
+  { name: "Arbiter", desc: "Judge 20 rounds as the Card Czar.", ok: s => s.judged >= 20 },
+  { name: "Prolific", desc: "Play 100 cards.", ok: s => s.cards >= 100 },
+  { name: "Lucky", desc: "Win a round on the timer's random pick.", ok: s => s.lucky >= 1 },
+  { name: "Federation Builder", desc: "Finish a game with 6 or more players.", ok: s => s.big >= 1 },
+  { name: "Hegemon", desc: "Win 5 games.", ok: s => s.wins >= 5 },
+  { name: "Galactic Veteran", desc: "Finish 25 games.", ok: s => s.games >= 25 }
+];
+let uid = null;                // the viewer's account id for this game, from the user capability
+let people = {};               // uid -> profile documents from the shared store (standings + anyone seated with you)
+let standings = [];            // top profiles by XP
+const asked = new Set();       // uids already fetched once
+function cleanProfile(d, seed) {
+  d = d || {};
+  const stats = {};
+  for (const k of STAT_KEYS) stats[k] = Math.max(0, Math.floor(+((d.stats || {})[k]) || 0));
+  return {
+    name: cleanName(d.name) || "", face: cleanFace(d.face, seed), img: validImg(d.img),
+    xp: Math.max(0, Math.floor(+d.xp || 0)), stats, awarded: Array.isArray(d.awarded) ? d.awarded.filter(x => typeof x === "string").slice(-40) : []
   };
-  startRound();
 }
-function drawWhite() { if (!S.white.length) { S.white = shuffle(S.whiteDiscard); S.whiteDiscard = []; } return S.white.pop(); }
-function drawBlack() { if (!S.blacks.length) { S.blacks = shuffle(S.blackDiscard); S.blackDiscard = []; } return S.blacks.pop(); }
-
-function startRound() {
-  if (S.black) S.blackDiscard.push(S.black);
-  S.round++;
-  S.czar = (S.czar + 1) % S.players.length;
-  S.black = drawBlack();
-  for (const p of S.players) while (p.hand.length < HAND) p.hand.push(drawWhite());
-  Object.assign(S, { phase: "pick", subs: [], order: [], selected: [], czarPick: null, reading: -1, winner: null });
+let profile = (() => { try { return cleanProfile(JSON.parse(store.get("cah-profile", "null")), ME); } catch { return cleanProfile(null, ME); } })();
+if (!profile.name) profile.name = myName;
+const myLook = () => ({ face: profile.face, img: profile.img, lvl: levelOf(profile.xp).lvl });
+function lookOf(pid) {
+  if (pid === ME) return myLook();
+  const s = P[pid] || {}, pr = s.uid && people[s.uid];
+  const face = s.face || (L && L.game && L.game.faces && L.game.faces[pid]) || seedFace(pid);
+  return { face: cleanFace(face, pid), img: pr ? validImg(pr.img) : null, lvl: pr ? levelOf(+pr.xp || 0).lvl : Math.max(1, Math.floor(+s.lvl || 1)) };
 }
-const need = () => blanks(S.black);
-const submitted = id => S.subs.some(s => s.pid === id);
-function submit(pid, idxs) {
-  const p = S.players[pid];
-  S.subs.push({ pid, cards: idxs.map(i => p.hand[i]) });
-  p.hand = p.hand.filter((_, i) => !idxs.includes(i));
-}
-function botSubmit(p) { submit(p.id, shuffle(p.hand.map((_, i) => i)).slice(0, need())); }
-function award(k) {
-  const s = S.order[k], w = S.players[s.pid];
-  S.winner = s.pid; w.score++;
-  for (const x of S.subs) S.whiteDiscard.push(...x.cards);
-  S.log.unshift({ h: sha(S.round + s.cards.join() + Math.random()), who: w.name, what: s.cards.join(" / ") });
-  S.log = S.log.slice(0, 7);
-  S.phase = w.score >= S.target ? "over" : "result";
-}
-
-/* Bots act on timers; drive() looks at the state and schedules whatever is due next. */
-function later(fn, ms) {
-  clearTimeout(timer);
-  timer = setTimeout(() => { timer = null; fn(); render(); drive(); }, reduced ? Math.min(ms, 250) : ms);
-}
-function drive() {
-  if (!S) return;
-  if (S.phase === "pick") {
-    const next = S.players.find((p, i) => p.bot && i !== S.czar && !submitted(p.id));
-    if (next) return later(() => botSubmit(next), 500 + Math.random() * 1000);
-    if (S.players.every((p, i) => i === S.czar || submitted(p.id))) {
-      later(() => { S.order = shuffle(S.subs); S.phase = "judge"; S.reading = -1; }, 450);
-    }
-  } else if (S.phase === "judge" && S.players[S.czar].bot) {
-    if (S.reading < S.order.length - 1) return later(() => { S.reading++; }, S.reading < 0 ? 500 : 1300);
-    later(() => award(Math.floor(Math.random() * S.order.length)), 1300);
+/* Fetches profiles of seated players who are not in the standings, once each. */
+function fetchPeople(uids) {
+  for (const u of uids) {
+    if (!u || typeof u !== "string" || people[u] || asked.has(u) || !db) continue;
+    asked.add(u);
+    db.doc("profiles/" + u).get().then(s => { if (s.exists) { people[u] = s.data(); render(); } }).catch(() => {});
   }
+}
+let saving = false, saveAgain = false;
+async function saveProfile() {
+  store.set("cah-profile", JSON.stringify(profile));
+  if (!db || !uid || !canWrite) return;
+  if (saving) { saveAgain = true; return; }
+  saving = true;
+  try {
+    do {
+      saveAgain = false;
+      await db.doc("profiles/" + uid).set({ ...clone(profile), updated: Date.now() });
+    } while (saveAgain);
+  } catch (e) { dbErr(e); }
+  finally { saving = false; }
+}
+/* Keeps your seat in the lobby showing your current name, portrait and level. */
+function syncSeat() {
+  if (!code || !db || !P[ME]) return;
+  const lvl = levelOf(profile.xp).lvl, s = P[ME];
+  if (s.name === myName && JSON.stringify(s.face) === JSON.stringify(profile.face) && s.lvl === lvl && s.uid === uid) return;
+  myRef().update({ name: myName, face: profile.face, lvl, uid }).catch(dbErr);
+}
+/* The stored profile wins over this browser's copy, except that XP and stats never go backwards
+   and the round/game keys already credited here are kept. */
+function adoptProfile(data) {
+  const d = cleanProfile(data, ME), old = profile, behind = d.xp < old.xp;
+  if (behind) { d.xp = old.xp; d.stats = old.stats; }
+  d.awarded = uniq(d.awarded.concat(old.awarded)).slice(-40);
+  if (!d.name) d.name = old.name;
+  profile = d;
+  if (profile.name) { myName = profile.name; store.set("cah-name", myName); if (!code) $("nameInput").value = myName; }
+  store.set("cah-profile", JSON.stringify(profile));
+  if (behind) saveProfile();
+  syncSeat();
+}
+const seatFields = () => ({ name: myName, face: profile.face, lvl: levelOf(profile.xp).lvl, uid });
+
+/* Each player credits only themselves, from what the lobby document shows, once per round and once per game. */
+function earn() {
+  const g = L && L.game;
+  if (!g || !g.seats || !g.seats.includes(ME) || (g.phase !== "result" && g.phase !== "over")) return;
+  const gains = [], s = profile.stats, before = new Set(TRAITS.filter(t => t.ok(s))), lvl0 = levelOf(profile.xp).lvl;
+  const mark = k => { const key = `${ME}:${g.gid}:${k}`; if (profile.awarded.includes(key)) return false; profile.awarded.push(key); return true; };
+  if (g.winner && g.order.length && mark(g.round)) {
+    const mine = g.order.find(o => o.pid === ME);
+    if (mine) { s.cards += mine.cards.length; gains.push([XP.round, "Cards played"]); }
+    if (g.winner === ME) { s.merged++; if (g.randomWin) s.lucky++; gains.push([XP.merged, g.randomWin ? "Merged by the timer" : "Commit merged"]); }
+    if (g.czar === ME && !g.randomWin) { s.judged++; gains.push([XP.judged, "Review completed"]); }
+  }
+  if (g.phase === "over" && mark("over")) {
+    s.games++; if (g.seats.length >= 6) s.big++;
+    gains.push([XP.game, "Game finished"]);
+    if ((g.champions || []).includes(ME)) { s.wins++; gains.push([XP.victory, "Victory"]); }
+  }
+  if (!gains.length) return;
+  profile.awarded = profile.awarded.slice(-40);
+  profile.xp += gains.reduce((a, b) => a + b[0], 0);
+  for (const [n, why] of gains) toast(`+${n} XP`, why);
+  const lvl = levelOf(profile.xp).lvl;
+  if (lvl > lvl0) toast("Promoted", `Level ${lvl}: ${rankOf(lvl)}`, "", true);
+  for (const t of TRAITS) if (t.ok(s) && !before.has(t)) toast("New trait", t.name, t.desc, true);
+  saveProfile(); syncSeat();
+}
+
+/* ---------- notices & errors ---------- */
+let noticeTimer = null;
+function notice(msg, { error = false, sticky = false } = {}) {
+  const n = $("notice");
+  clearTimeout(noticeTimer);
+  n.hidden = !msg; n.textContent = msg || ""; n.classList.toggle("error", error);
+  if (msg && !sticky) noticeTimer = setTimeout(() => { n.hidden = true; }, 7000);
+}
+function writeError(e) {
+  if (e && e.code === "invalid_argument") notice("You can view this game but can't save to it. Ask the person who shared it to give you edit access.", { error: true, sticky: true });
+  else if (e && e.code === "quota_exceeded") notice("The game's storage is full. Delete some card packs and try again.", { error: true });
+  else notice(`That didn't save (${(e && e.code) || "network error"}). Try again.`, { error: true });
+}
+const dbErr = e => { if (e && e.code !== "revoked") writeError(e); };
+function toast(head, label, sub = "", big = false) {
+  const t = document.createElement("div");
+  t.className = `toast frame${big ? " big" : ""}`;
+  t.innerHTML = `<b>${esc(head)}</b><span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}`;
+  $("toasts").append(t);
+  setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), reduced ? 0 : 400); }, big ? 6000 : 3800);
+}
+
+/* ---------- presence (who has the page open right now) ---------- */
+function setPresence(extra) { if (room) room.presence({ pid: ME, lobby: code, ...extra }).catch(() => {}); }
+function online(pid) {
+  if (pid === ME || !room || !roomSince) return true;
+  return room.peers().some(p => p.presence && p.presence.pid === pid && p.presence.lobby === code);
+}
+function trackPresence() {
+  if (!L || (room && !room.connected())) return;
+  const now = Date.now();
+  for (const pid of uniq(Object.keys(P).concat(L.host))) {
+    if (online(pid)) delete offlineSince[pid]; else offlineSince[pid] ??= now;
+  }
+}
+const gone = pid => !!offlineSince[pid] && Date.now() - offlineSince[pid] > GONE_MS;
+const present = pid => !!P[pid] && !gone(pid);
+const byJoined = (a, b) => ((P[a] && P[a].joined) || 0) - ((P[b] && P[b].joined) || 0) || (a < b ? -1 : 1);
+const nameOf = pid => (P[pid] && P[pid].name) || (L && L.game && L.game.names[pid]) || "someone";
+const isHost = () => !!L && L.host === ME;
+
+/* ---------- card packs ---------- */
+function allPacks() {
+  const list = Object.entries(packs).map(([id, p]) => ({ id, ...p }))
+    .filter(p => typeof p.name === "string" && Array.isArray(p.black) && Array.isArray(p.white))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(p => ({ ...p, kind: "custom" }));
+  return [...BUILTIN_PACKS, ...list];
+}
+const packById = id => allPacks().find(p => p.id === id);
+const packBy = p => p.builtin ? (p.by ? `by @${esc(p.by)} · bundled` : "Built-in") : `by @${esc(p.byName || "anonymous")}`;
+/* Card counts for the lobby summary, counted the same way buildDeck counts them (before any size trimming). */
+function deckCounts(ids) {
+  const b = new Set(), w = new Set();
+  for (const id of ids) { const p = packById(id); if (!p) continue; p.black.forEach(c => b.add(cleanCard(c))); p.white.forEach(c => w.add(cleanCard(c))); }
+  b.delete(""); w.delete("");
+  return { black: b.size, white: w.size };
+}
+function buildDeck(ids) {
+  let white = [], black = [];
+  for (const id of ids) {
+    const p = packById(id);
+    if (!p) continue;
+    white.push(...p.white.map(cleanCard).filter(Boolean));
+    black.push(...p.black.map(cleanCard).filter(Boolean));
+  }
+  white = shuffle(uniq(white)); black = shuffle(uniq(black));
+  /* keep the lobby document well under the store's 256 KiB limit */
+  while (JSON.stringify(white).length + JSON.stringify(black).length > 150000) {
+    white = white.slice(0, Math.floor(white.length * .85)); black = black.slice(0, Math.floor(black.length * .85));
+  }
+  return { white, black };
+}
+function parseLines(text) { return uniq(String(text).split(/\r?\n/).map(cleanCard).filter(Boolean)); }
+
+async function savePack(e) {
+  e.preventDefault();
+  const name = $("packName").value.trim().slice(0, 40);
+  const black = parseLines($("packBlack").value), white = parseLines($("packWhite").value);
+  const msg = m => { $("packFormMsg").hidden = !m; $("packFormMsg").textContent = m || ""; };
+  if (!name) return msg("Give the pack a name.");
+  if (!black.length && !white.length) return msg("Add at least one card.");
+  if (black.length > MAX_CARDS || white.length > MAX_CARDS) return msg(`Packs hold up to ${MAX_CARDS} cards of each colour.`);
+  const tooMany = black.find(b => blanks(b) > 3);
+  if (tooMany) return msg(`This prompt has more than 3 blanks: "${tooMany}"`);
+  msg("");
+  const id = editingPack || "k" + rid(10);
+  try {
+    await db.doc("packs/" + id).set({ name, black, white, by: ME, byName: myName || "anonymous", updated: Date.now() });
+    closePackForm();
+    notice(`Saved "${name}".`);
+  } catch (err) { writeError(err); }
+}
+function openPackForm(id, copyFrom) {
+  const src = packById(copyFrom || id);
+  editingPack = copyFrom ? null : id;
+  $("packFormTitle").textContent = id && !copyFrom ? "Edit pack" : copyFrom ? "Copy of a pack" : "New pack";
+  $("packName").value = src ? (copyFrom ? `${src.name} (copy)`.slice(0, 40) : src.name) : "";
+  $("packBlack").value = src ? src.black.join("\n") : "";
+  $("packWhite").value = src ? src.white.join("\n") : "";
+  $("packFormMsg").hidden = true;
+  $("packForm").hidden = false;
+  $("packName").focus();
+}
+function closePackForm() { editingPack = null; $("packForm").hidden = true; }
+
+/* ---------- joining & leaving lobbies ---------- */
+function requireName() {
+  const n = cleanName($("nameInput").value);
+  if (!n) { notice("Choose a name first.", { error: true }); $("nameInput").focus(); return null; }
+  if (n !== myName || n !== profile.name) { myName = profile.name = n; store.set("cah-name", n); saveProfile(); }
+  $("nameInput").value = n;
+  return n;
+}
+async function createLobby() {
+  if (!db || !requireName()) return;
+  try {
+    let c = "";
+    for (let i = 0; i < 8; i++) {
+      c = Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
+      if (!(await db.doc("lobbies/" + c).get()).exists) break;
+    }
+    const now = Date.now();
+    await db.doc("lobbies/" + c).set({ code: c, host: ME, hostName: myName, status: "lobby", rev: 1, count: 1, created: now, updated: now, settings: { ...DEFAULTS }, game: null });
+    await enterLobby(c);
+    pruneOldLobbies();
+  } catch (e) { writeError(e); }
+}
+async function joinLobby(c) {
+  if (!db || !requireName()) return;
+  c = String(c || "").toUpperCase().trim();
+  if (!/^[A-Z]{4}$/.test(c)) return notice("Lobby codes are 4 letters.", { error: true });
+  try {
+    const s = await db.doc("lobbies/" + c).get();
+    if (!s.exists) return notice(`No lobby uses the code ${c}. Check the code with the host.`, { error: true });
+    const ps = await db.collection(`lobbies/${c}/players`).get();
+    const max = Math.min(MAX_PLAYERS, (s.data().settings || {}).maxPlayers || MAX_PLAYERS);
+    if (ps.size >= max && !ps.docs.some(d => d.id === ME)) return notice(`Lobby ${c} is full (${max} players).`, { error: true });
+    await enterLobby(c);
+  } catch (e) { writeError(e); }
+}
+async function enterLobby(c) {
+  const me = db.doc(`lobbies/${c}/players/${ME}`);
+  const s = await me.get();
+  if (s.exists) await me.update(seatFields());
+  else await me.set({ ...seatFields(), joined: Date.now(), sub: null, pick: null });
+  code = c; tab.set("cah-lobby", c);
+  seenLobby = false; seenSelf = false; leaving = false; L = null; P = {};
+  for (const k in offlineSince) delete offlineSince[k];
+  selected = []; czarPick = null;
+  $("renameInput").value = myName; $("nameInput").value = myName;
+  setPresence({ look: null });
+  unsubLobby = db.doc("lobbies/" + c).onSnapshot(snap => {
+    if (!snap.exists) { if (seenLobby) exitLobby("The lobby was closed."); return; }
+    seenLobby = true;
+    const d = clone(snap.data());
+    /* while hosting, ignore echoes older than what this browser already decided */
+    if (L && L.host === ME && d.host === ME && (d.rev || 0) < (L.rev || 0)) return;
+    if (!L || d.rev !== L.rev) noteSkew(d);
+    L = d; afterChange();
+  }, dbErr);
+  unsubPlayers = db.collection(`lobbies/${c}/players`).onSnapshot(snap => {
+    P = {};
+    for (const d of snap.docs) P[d.id] = d.data();
+    if (P[ME]) seenSelf = true;
+    else if (seenSelf && !leaving) return exitLobby("The host removed you from the lobby.");
+    afterChange();
+  }, dbErr);
+  render();
+}
+function exitLobby(msg) {
+  unsubLobby && unsubLobby(); unsubPlayers && unsubPlayers();
+  unsubLobby = unsubPlayers = null;
+  clearTimeout(nextTimer); nextKey = "";
+  code = null; L = null; P = {}; view = "home";
+  tab.set("cah-lobby", null);
+  setPresence({ look: null });
+  if (msg) notice(msg);
+  render();
+}
+async function leaveLobby() {
+  if (!code) return;
+  leaving = true;
+  const c = code;
+  try {
+    if (isHost()) {
+      const others = Object.keys(P).filter(pid => pid !== ME).sort(byJoined);
+      const next = others.find(pid => online(pid) && !gone(pid)) || others[0];
+      if (next) { L.host = next; L.hostName = nameOf(next); L.rev++; await db.doc("lobbies/" + c).set(clone(L)); }
+      else { await db.doc("lobbies/" + c).delete(); await db.doc("directory/" + c).delete(); }
+    }
+    await db.doc(`lobbies/${c}/players/${ME}`).delete();
+  } catch (e) { writeError(e); }
+  exitLobby("");
+}
+/* Lobbies abandoned for days get cleared out so the store doesn't fill up. */
+async function pruneOldLobbies() {
+  try {
+    const old = await db.collection("directory").orderBy("updated", "asc").limit(10).get();
+    for (const d of old.docs) {
+      if (Date.now() - (d.data().updated || 0) < PRUNE_MS) break;
+      const ps = await db.collection(`lobbies/${d.id}/players`).get();
+      for (const p of ps.docs) await db.doc(`lobbies/${d.id}/players/${p.id}`).delete();
+      await db.doc("lobbies/" + d.id).delete();
+      await db.doc("directory/" + d.id).delete();
+    }
+  } catch {}
+}
+
+/* ---------- player actions (each player only writes their own document) ---------- */
+const myRef = () => db.doc(`lobbies/${code}/players/${ME}`);
+async function submitCards() {
+  const g = L.game;
+  if (!g || g.phase !== "pick" || selected.length !== need(g.black)) return;
+  const hand = g.hands[ME] || [];
+  const cards = selected.map(i => hand[i]);
+  selected = [];
+  try { await myRef().update({ sub: { gid: g.gid, round: g.round, cards } }); } catch (e) { writeError(e); }
+  render();
+}
+async function awardPick() {
+  const g = L.game;
+  if (!g || g.phase !== "judge" || g.czar !== ME || czarPick == null) return;
+  try { await myRef().update({ pick: { gid: g.gid, round: g.round, k: czarPick } }); } catch (e) { writeError(e); }
+}
+async function rename(e) {
+  e.preventDefault();
+  const n = cleanName($("renameInput").value);
+  if (!n) return notice("Names need at least one letter or number.", { error: true });
+  myName = profile.name = n; store.set("cah-name", n); $("nameInput").value = n; $("renameInput").value = n;
+  saveProfile();
+  try { await myRef().update({ name: n }); notice(`You are now @${n}.`); } catch (err) { writeError(err); }
+}
+
+/* ---------- host: the host's browser runs the rules and is the only writer of the lobby document ---------- */
+let writing = false, dirty = false, lastDir = "", lastDirAt = 0;
+async function commit() {
+  if (!isHost()) return;
+  L.rev = (L.rev || 0) + 1; L.updated = Date.now();
+  dirty = true; render();
+  if (writing) return;
+  writing = true;
+  try {
+    while (dirty && isHost()) {
+      dirty = false;
+      const c = code, body = clone(L);
+      await db.doc("lobbies/" + c).set(body);
+      await syncDirectory(c, body);
+    }
+  } catch (e) { writeError(e); }
+  finally { writing = false; }
+}
+async function syncDirectory(c, body) {
+  const s = { ...DEFAULTS, ...body.settings };
+  const sum = { hostName: body.hostName || "", count: body.count || 0, max: s.maxPlayers, private: !!s.private, status: body.status, round: body.game ? body.game.round : 0 };
+  const key = c + JSON.stringify(sum);
+  if (key === lastDir && Date.now() - lastDirAt < 600000) return;
+  lastDir = key; lastDirAt = Date.now();
+  await db.doc("directory/" + c).set({ ...sum, updated: Date.now() });
+}
+
+function draw(g, pile, discard) {
+  if (!g[pile].length) { g[pile] = shuffle(g[discard]); g[discard] = []; }
+  return g[pile].pop();
+}
+function subOf(pid) {
+  const g = L.game, s = P[pid] && P[pid].sub;
+  if (!s || s.gid !== g.gid || s.round !== g.round || !Array.isArray(s.cards) || s.cards.length !== need(g.black)) return null;
+  const hand = (g.hands[pid] || []).slice();
+  for (const c of s.cards) { const i = hand.indexOf(c); if (i < 0) return null; hand.splice(i, 1); }
+  return s.cards;
+}
+function startRound(g) {
+  const s = settings();
+  if (s.rounds && g.round >= s.rounds) return endGame(g);
+  if (g.black) g.blackDiscard.push(g.black);
+  for (const pid of Object.keys(g.hands)) if (!P[pid]) { g.whiteDiscard.push(...g.hands[pid]); delete g.hands[pid]; }
+  const seats = Object.keys(P).filter(present).sort(byJoined);
+  const prev = g.czarJoined ?? -1;
+  const czar = seats.find(pid => (P[pid].joined || 0) > prev) || seats[0];
+  Object.assign(g, { seats, czar, czarJoined: (P[czar] && P[czar].joined) || 0, round: g.round + 1, phase: "pick", order: [], winner: null, randomWin: false,
+    deadline: s.pickTime ? Date.now() + s.pickTime * 1000 : 0 });
+  g.black = draw(g, "blacks", "blackDiscard");
+  for (const pid of seats) {
+    const h = g.hands[pid] || (g.hands[pid] = []);
+    while (h.length < g.hand) { const c = draw(g, "white", "whiteDiscard"); if (c == null) break; h.push(c); }
+    g.scores[pid] ??= 0;
+    g.names[pid] = P[pid].name;
+    (g.faces ||= {})[pid] = P[pid].face || null;
+  }
+}
+function discardOrder(g) { for (const s of g.order) g.whiteDiscard.push(...s.cards); }
+function skipRound(g, why) {
+  if (g.phase === "judge") discardOrder(g);
+  g.log.unshift({ h: "-------", who: null, what: why }); g.log = g.log.slice(0, 7);
+  startRound(g);
+}
+/* Moves to judging. `late` players ran out of time: the timer plays random cards from their hand. */
+function toJudge(g, pids, late = []) {
+  const n = need(g.black);
+  const played = pids.map(pid => ({ pid, cards: subOf(pid) }));
+  for (const pid of late) {
+    const h = g.hands[pid] || [];
+    if (h.length >= n) played.push({ pid, cards: shuffle(h).slice(0, n), auto: true });
+  }
+  if (!played.length) return false;
+  g.order = shuffle(played);
+  for (const s of g.order) for (const c of s.cards) { const h = g.hands[s.pid]; h.splice(h.indexOf(c), 1); }
+  const t = settings().judgeTime;
+  Object.assign(g, { phase: "judge", deadline: t ? Date.now() + t * 1000 : 0 });
+  return true;
+}
+function award(g, k, random = false) {
+  const s = g.order[k];
+  g.winner = s.pid; g.randomWin = random; g.scores[s.pid] = (g.scores[s.pid] || 0) + 1;
+  g.log.unshift({ h: sha(g.gid + g.round + s.cards.join()), who: s.pid, what: s.cards.join(" / ") });
+  g.log = g.log.slice(0, 7);
+  discardOrder(g);
+  g.deadline = 0;
+  if (g.scores[s.pid] >= settings().target) endGame(g, [s.pid]);
+  else g.phase = "result";
+}
+/* Ends on the target score (one champion) or the round limit (everyone tied for the top score). */
+function endGame(g, champions) {
+  if (!champions) {
+    const top = Math.max(0, ...Object.values(g.scores));
+    champions = top ? Object.keys(g.scores).filter(pid => g.scores[pid] === top) : [];
+  }
+  Object.assign(g, { phase: "over", champions, deadline: 0 });
+  L.status = "over";
+}
+function hostTick() {
+  if (!isHost()) return;
+  let changed = false;
+  const count = Object.keys(P).length;
+  if (L.count !== count) { L.count = count; changed = true; }
+  if (P[ME] && L.hostName !== P[ME].name) { L.hostName = P[ME].name; changed = true; }
+  const g = L.game;
+  if (L.status === "playing" && g) {
+    if ((g.phase === "pick" || g.phase === "judge") && !present(g.czar)) {
+      skipRound(g, `@${nameOf(g.czar)} left while judging, so the round was skipped.`); changed = true;
+    } else if (g.phase === "pick") {
+      const others = g.seats.filter(pid => pid !== g.czar);
+      const waiting = others.filter(pid => present(pid) && !subOf(pid));
+      const subs = others.filter(pid => subOf(pid));
+      const late = g.deadline && Date.now() >= g.deadline;
+      if (!waiting.length && subs.length) { toJudge(g, subs); changed = true; }
+      else if (late) {
+        if (!toJudge(g, subs, waiting)) skipRound(g, "Nobody played a card in time, so the round was skipped.");
+        changed = true;
+      }
+    } else if (g.phase === "judge") {
+      const pk = P[g.czar] && P[g.czar].pick;
+      if (pk && pk.gid === g.gid && pk.round === g.round && Number.isInteger(pk.k) && pk.k >= 0 && pk.k < g.order.length) { award(g, pk.k); changed = true; }
+      else if (g.deadline && Date.now() >= g.deadline) { award(g, Math.floor(Math.random() * g.order.length), true); changed = true; }
+    } else if (g.phase === "result") scheduleNext(g);
+  }
+  if (changed) commit();
+}
+let nextTimer = null, nextKey = "";
+function scheduleNext(g) {
+  const key = g.gid + ":" + g.round, delay = settings().next;
+  if (nextKey === key || !delay) return;
+  nextKey = key; clearTimeout(nextTimer);
+  nextTimer = setTimeout(() => {
+    const cur = L && L.game;
+    if (isHost() && cur && cur.gid + ":" + cur.round === key && cur.phase === "result") { startRound(cur); commit(); }
+  }, delay * 1000);
+}
+function startCheck() {
+  const players = Object.keys(P).filter(present), s = settings();
+  const deck = buildDeck(s.packs || []), want = players.length * (s.hand + 1);
+  if (players.length < MIN_PLAYERS) return { ok: false, why: `Waiting for players: ${players.length} of ${MIN_PLAYERS} needed.` };
+  if (!deck.black.length) return { ok: false, why: "The selected packs have no black cards." };
+  if (deck.white.length < want) return { ok: false, why: `The selected packs need at least ${want} white cards for ${players.length} players with ${s.hand}-card hands.` };
+  return { ok: true, deck };
+}
+function startGame() {
+  if (!isHost()) return;
+  const chk = startCheck();
+  if (!chk.ok) return notice(chk.why, { error: true });
+  const g = { gid: rid(8), round: 0, hand: settings().hand, czar: null, czarJoined: null, seats: [], black: null, phase: "pick", order: [], winner: null,
+    hands: {}, scores: {}, names: {}, log: [], white: chk.deck.white, whiteDiscard: [], blacks: chk.deck.black, blackDiscard: [] };
+  startRound(g);
+  L.game = g; L.status = "playing";
+  commit();
+}
+function backToLobby() { if (!isHost()) return; L.status = "lobby"; L.game = null; commit(); }
+/* If the host's page has been gone a while, the longest-seated player still here takes over. */
+function maybeTakeOver(force) {
+  if (!L || isHost()) return;
+  if (!force) {
+    if (!room || !roomSince || Date.now() - roomSince < 8000 || !gone(L.host)) return;
+    const next = Object.keys(P).filter(pid => pid !== L.host && online(pid)).sort(byJoined)[0];
+    if (next !== ME) return;
+  }
+  L.host = ME; L.hostName = myName;
+  notice("The host left, so you are hosting now.");
+  commit();
+}
+
+function afterChange() { trackPresence(); earn(); render(); hostTick(); }
+function tick() {
+  if (!L) return;
+  trackPresence();
+  hostTick();
+  maybeTakeOver(false);
+  updateTimer();
+  const key = Object.keys(P).sort().map(pid => pid + (gone(pid) ? 0 : 1) + (online(pid) ? 1 : 0)).join();
+  if (key !== lastOnline) { lastOnline = key; render(); }
 }
 
 /* ---------- rendering ---------- */
@@ -457,128 +1682,395 @@ function identicon(seed) {
   }
   return `<svg viewBox="-0.5 -0.5 6 6" aria-hidden="true"><g fill="hsl(${hue} 55% 48%)">${r}</g></svg>`;
 }
-
 function blackCard(text, cards) {
   let i = 0;
-  const body = esc(text).replace(/____/g, () => {
+  let body = esc(text).replace(/____/g, () => {
     const c = cards && cards[i++];
     return c ? `<mark>${esc(trimDot(c))}</mark>` : `<span class="blank" role="img" aria-label="blank"></span>`;
   });
-  const n = blanks(text);
-  return `<article class="card black"><p class="card-text">${body}</p>
+  if (!blanks(text)) body += cards && cards[0] ? `<br><mark>${esc(cards[0])}</mark>` : "";
+  const n = need(text);
+  return `<article class="card black frame"><p class="card-text">${body}</p>
     <footer class="card-meta"><span>issue #${fnv(text) % 9000 + 1000}</span>${n > 1 ? `<span class="pick">Pick ${n}</span>` : ""}</footer></article>`;
 }
 function whiteCard(text, { tag = "div", attrs = "", badge = "", cls = "", i = 0 } = {}) {
   return `<${tag} class="card white ${cls}" style="--i:${i}" ${attrs}><span class="card-text">${esc(text)}</span>
     <span class="card-meta"><span>${sha(text)}</span></span>${badge}</${tag}>`;
 }
-const at = p => `<strong>@${esc(p.name)}</strong>`;
+const at = pid => `<strong>@${esc(nameOf(pid))}</strong>`;
+function settingsNote(s) {
+  return [
+    s.rounds ? `First to ${s.target} points, or the top score after ${s.rounds} rounds.` : `First to ${s.target} points wins.`,
+    s.pickTime ? `${s.pickTime}s to pick; the timer plays random cards for anyone too slow.` : "No time limit to pick.",
+    s.judgeTime ? `${s.judgeTime}s for the czar, then a random submission wins.` : "No time limit for the czar."
+  ].join(" ");
+}
+/* Countdown from the host's deadline, corrected by the best clock offset seen from the host's writes. */
+let skew = null, skewHost = null;
+function noteSkew(d) {
+  if (d.host === ME) { skew = 0; skewHost = ME; return; }
+  if (skewHost !== d.host) { skew = null; skewHost = d.host; }
+  const s = Date.now() - (d.updated || 0);
+  if (Math.abs(s) < 3600e3 && (skew == null || s < skew)) skew = s;
+}
+function updateTimer() {
+  const el = $("timer"), g = L && L.game;
+  const live = g && g.deadline && (g.phase === "pick" || g.phase === "judge");
+  el.hidden = !live;
+  if (!live) return;
+  const left = Math.max(0, Math.ceil((g.deadline + (skew || 0) - Date.now()) / 1000));
+  el.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} ${g.phase === "pick" ? "to pick" : "for the czar"}`;
+  el.classList.toggle("urgent", left <= 10);
+}
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function render() {
-  const me = S.players[0], czar = S.players[S.czar], n = need();
-  const iAmCzar = S.czar === 0, phase = S.phase;
-  const key = S.round + phase;
-  const fresh = key !== lastKey; lastKey = key;
+  const v = draft ? "profile" : !code ? view : (!L || L.status === "lobby") ? "lobby" : "game";
+  $("viewHome").hidden = v !== "home"; $("viewPacks").hidden = v !== "packs"; $("viewProfile").hidden = v !== "profile";
+  $("viewLobby").hidden = v !== "lobby"; $("viewGame").hidden = v !== "game";
+  $("codeChip").hidden = $("leaveBtn").hidden = !code;
+  $("roundInfo").hidden = v !== "game";
+  if (code) $("codeChip").textContent = `Lobby ${code}`;
+  renderTop();
+  if (v === "home") renderHome();
+  else if (v === "packs") renderPacks();
+  else if (v === "profile") renderProfile();
+  else if (v === "lobby") renderLobby();
+  else renderGame();
+}
 
-  $("roundInfo").textContent = `Round ${S.round} · first to ${S.target}`;
+const ICONS = {
+  merged: `<svg viewBox="0 0 16 16" fill="none" stroke="#62d6d2" stroke-width="1.6"><circle cx="4" cy="3.5" r="1.8"/><circle cx="4" cy="12.5" r="1.8"/><circle cx="12" cy="8" r="1.8"/><path d="M4 5.3v5.4M5.6 4.4c3 .3 4.6 1.6 4.8 2.4"/></svg>`,
+  wins: `<svg viewBox="0 0 16 16"><path d="M2 12 1 4l4 3 3-5 3 5 4-3-1 8Z" fill="#eabf5a"/><rect x="2" y="13" width="12" height="1.6" fill="#eabf5a"/></svg>`,
+  judged: `<svg viewBox="0 0 16 16" fill="none" stroke="#c9a6ff" stroke-width="1.5"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5Z"/><circle cx="8" cy="8" r="2.2" fill="#c9a6ff"/></svg>`
+};
+function renderTop() {
+  const { lvl, into, need: n } = levelOf(profile.xp), s = profile.stats;
+  $("meChip").innerHTML = `${avHTML(myLook(), "md")}<span class="me-name">@${esc(myName || "unnamed ruler")}</span>
+    <span class="me-rank">${esc(rankOf(lvl))}<span class="xpbar" title="${into} / ${n} XP to level ${lvl + 1}"><i style="width:${(into / n * 100).toFixed(1)}%"></i></span></span>`;
+  $("resBar").innerHTML = [["merged", s.merged, "Merged"], ["wins", s.wins, "Victories"], ["judged", s.judged, "Reviews"]]
+    .map(([k, v, label]) => `<span class="res-item" title="${label}">${ICONS[k]}${v}<small>${label}</small></span>`).join("");
+}
+
+function renderRuler() {
+  const { lvl, into, need: n } = levelOf(profile.xp), s = profile.stats;
+  const rate = s.games ? Math.round(s.wins / s.games * 100) + "%" : "–";
+  $("rulerCard").innerHTML = `
+    <div class="panel-head"><h2 class="ptitle">Your ruler</h2><button class="btn small" type="button" data-act="open-profile">Edit ruler</button></div>
+    <div class="ruler-top">${avHTML(myLook(), "xl")}
+      <div><p class="ruler-name">@${esc(myName || "unnamed ruler")}</p>
+        <p class="ruler-rank">${esc(rankOf(lvl))} · Level ${lvl}</p>
+        <div class="xpbar"><i style="width:${(into / n * 100).toFixed(1)}%"></i></div>
+        <div class="xp-line"><span>${into.toLocaleString()} / ${n.toLocaleString()} XP</span><span>${profile.xp.toLocaleString()} total</span></div></div></div>
+    <dl class="stats">
+      ${[["Games", s.games], ["Victories", s.wins], ["Win rate", rate], ["Merged", s.merged], ["Reviews", s.judged], ["Cards played", s.cards]]
+        .map(([k, v]) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`).join("")}
+    </dl>
+    <div class="field"><span class="eyebrow">Traits · ${TRAITS.filter(t => t.ok(s)).length} of ${TRAITS.length}</span>
+      <div class="traits">${TRAITS.map(t => `<span class="trait ${t.ok(s) ? "" : "locked"}" title="${esc(t.desc)}">${esc(t.name)}</span>`).join("")}</div></div>
+    <p class="hint">XP per round: ${XP.round} for playing, ${XP.merged} when your commit is merged, ${XP.judged} for judging as czar. Finishing a game adds ${XP.game}, winning it ${XP.victory}.${uid ? "" : " Your progress is saved in this browser only."}</p>`;
+}
+
+function renderStandings() {
+  const list = standings.filter(d => d.xp > 0 || d.id === uid);
+  if (uid && !list.some(d => d.id === uid) && profile.xp > 0) list.push({ id: uid, ...profile });
+  list.sort((a, b) => b.xp - a.xp);
+  $("standings").innerHTML = !db ? `<li class="empty">Standings show up here once the game is connected.</li>`
+    : list.length ? list.slice(0, 10).map((d, i) => {
+      const me = d.id === uid, lvl = levelOf(d.xp).lvl;
+      const look = me ? myLook() : { face: d.face, img: d.img, lvl };
+      return `<li class="row std ${me ? "me" : ""} ${i === 0 ? "top1" : ""}"><span class="rank-n">${i + 1}</span>${avHTML(look, "")}
+        <span class="row-main"><span class="row-title">@${esc((me ? myName || "unnamed ruler" : d.name) || "unknown ruler")}${me ? " (you)" : ""}</span>
+          <span class="row-sub">${esc(rankOf(lvl))} · Level ${lvl} · ${plural(d.stats.wins, "victory", "victories")}</span></span>
+        <span class="xp-num">${d.xp.toLocaleString()} XP</span></li>`;
+    }).join("")
+    : `<li class="empty">Nobody has earned XP yet. Finish a game to claim the top spot.</li>`;
+}
+
+/* Portrait editor: `draft` holds the unsaved face, picture and name while the editor is open. */
+let draft = null;
+function openProfile() { draft = { face: { ...profile.face }, img: profile.img, name: myName }; $("pfName").value = myName; $("pfMsg").hidden = true; render(); }
+function renderProfile() {
+  const lvl = levelOf(profile.xp).lvl;
+  $("pfBig").innerHTML = avHTML({ face: draft.face, img: draft.img, lvl }, "xxl");
+  $("pfRank").textContent = `${rankOf(lvl)} · Level ${lvl}`;
+  $("pfClearImg").hidden = !draft.img;
+  const f = draft.face;
+  $("pfSpecies").innerHTML = SPECIES.map((name, i) => `<button class="sp" type="button" data-face="s" data-val="${i}" aria-pressed="${f.s === i}">
+    ${avHTML({ face: { ...f, s: i } }, "lg", false)}<span>${name}</span></button>`).join("");
+  const sw = (key, list, label) => list.map((c, i) => `<button class="sw" type="button" style="--sw:${c}" data-face="${key}" data-val="${i}" aria-pressed="${f[key] === i}" aria-label="${label} ${i + 1}"></button>`).join("");
+  $("pfSkin").innerHTML = sw("k", SKINS, "Skin colour");
+  $("pfEyes").innerHTML = sw("e", EYES, "Eye colour");
+  $("pfAttire").innerHTML = sw("a", ATTIRE, "Uniform colour");
+  $("pfBack").innerHTML = sw("b", BACKS, "Backdrop colour");
+}
+function saveRuler() {
+  const n = cleanName($("pfName").value);
+  if (!n) { $("pfMsg").hidden = false; $("pfMsg").textContent = "Names need at least one letter or number."; return; }
+  myName = profile.name = n; store.set("cah-name", n);
+  profile.face = cleanFace(draft.face, ME); profile.img = validImg(draft.img);
+  $("nameInput").value = $("renameInput").value = n;
+  draft = null;
+  saveProfile(); syncSeat();
+  notice("Ruler saved.");
+  render();
+}
+/* Crops an uploaded picture to a square and shrinks it so it fits comfortably in the profile document. */
+function loadPicture(file) {
+  if (!file || !/^image\//.test(file.type)) return;
+  const url = URL.createObjectURL(file), im = new Image();
+  im.onload = () => {
+    const c = document.createElement("canvas"), n = 128, side = Math.min(im.width, im.height);
+    c.width = c.height = n;
+    c.getContext("2d").drawImage(im, (im.width - side) / 2, (im.height - side) / 2, side, side, 0, 0, n, n);
+    URL.revokeObjectURL(url);
+    let q = .85, data = c.toDataURL("image/jpeg", q);
+    while (data.length > 50000 && q > .3) { q -= .15; data = c.toDataURL("image/jpeg", q); }
+    if (!validImg(data)) { $("pfMsg").hidden = false; $("pfMsg").textContent = "That picture couldn't be used. Try a JPEG or PNG."; return; }
+    if (draft) { draft.img = data; $("pfMsg").hidden = true; renderProfile(); }
+  };
+  im.onerror = () => { URL.revokeObjectURL(url); $("pfMsg").hidden = false; $("pfMsg").textContent = "That file isn't a picture this browser can read."; };
+  im.src = url;
+}
+
+function renderHome() {
+  renderRuler(); renderStandings();
+  const off = !db || !canWrite;
+  $("createBtn").disabled = $("joinBtn").disabled = off;
+  const now = Date.now();
+  const rows = directory.filter(d => /^[A-Z]{4}$/.test(d.id) && d.count > 0 && !d.private && now - (d.updated || 0) < STALE_MS);
+  $("lobbyList").innerHTML = !db
+    ? `<li class="empty">Open lobbies show up here once the game is connected.</li>`
+    : rows.length ? rows.map(d => `<li class="row">
+        <span class="code-tag">${d.id}</span>
+        <span class="row-main"><span class="row-title">@${esc(d.hostName || "host")}'s lobby</span>
+          <span class="row-sub">${d.count}/${d.max || MAX_PLAYERS} players · ${d.status === "lobby" ? "waiting to start" : d.status === "over" ? "game finished" : `playing round ${d.round || 1}`}</span></span>
+        <span class="row-actions"><button class="btn small" type="button" data-join="${d.id}" ${off ? "disabled" : ""}>Join</button></span></li>`).join("")
+    : `<li class="empty">No open lobbies right now. Create one and share the code with your friends.</li>`;
+}
+
+function renderPacks() {
+  $("packList").innerHTML = allPacks().map(p => {
+    const mine = !p.builtin && p.by === ME;
+    const kind = KINDS.find(k => k.kind === p.kind);
+    const by = `${kind && p.builtin ? `${kind.label} · ` : ""}${packBy(p)}${mine ? " (you)" : ""}`;
+    return `<li class="row">
+      <span class="avatar">${identicon(p.id)}</span>
+      <span class="row-main"><span class="row-title">${esc(p.name)}</span>
+        <span class="row-sub">${by} · ${plural(p.black.length, "prompt", "prompts")} · ${plural(p.white.length, "answer", "answers")}</span></span>
+      <span class="row-actions">
+        ${mine ? `<button class="btn small" type="button" data-edit-pack="${esc(p.id)}">Edit</button>` : ""}
+        <button class="btn small" type="button" data-copy-pack="${esc(p.id)}" ${db && canWrite ? "" : "disabled"}>Copy</button>
+        ${mine ? `<button class="btn small danger ${armedDelete === p.id ? "armed" : ""}" type="button" data-del-pack="${esc(p.id)}">${armedDelete === p.id ? "Confirm delete" : "Delete"}</button>` : ""}
+      </span></li>`;
+  }).join("");
+  document.querySelector('[data-act="new-pack"]').disabled = !db || !canWrite;
+}
+
+function renderLobby() {
+  $("lobbyCode").textContent = code || "";
+  if (!L) {
+    $("lobbyPlayers").innerHTML = `<li class="empty">Connecting to the lobby<span class="dots"></span></li>`;
+    $("lobbySettings").innerHTML = ""; $("lobbyStart").innerHTML = "";
+    return;
+  }
+  const host = isHost();
+  const ids = Object.keys(P).sort(byJoined);
+  $("playersHead").textContent = `Players · ${ids.length} of ${settings().maxPlayers}`;
+  fetchPeople(ids.map(pid => P[pid].uid));
+  $("lobbyPlayers").innerHTML = ids.map(pid => {
+    const away = gone(pid) || !online(pid), look = lookOf(pid);
+    const tags = [rankOf(look.lvl), pid === L.host ? "host" : "", pid === ME ? "you" : "", away ? "away" : "here"].filter(Boolean).join(" · ");
+    return `<li class="row ${pid === ME ? "me" : ""}">
+      ${avHTML(look, "md")}
+      <span class="row-main"><span class="row-title">@${esc(P[pid].name || "player")}</span>
+        <span class="row-sub"><span class="dot ${away ? "off" : ""}"></span> ${esc(tags)}</span></span>
+      <span class="row-actions">${host && pid !== ME ? `<button class="btn small danger" type="button" data-kick="${pid}">Remove</button>` : ""}</span></li>`;
+  }).join("");
+
+  const s = settings(), chosen = new Set(s.packs || []), off = host ? "" : "disabled";
+  const all = allPacks(), counts = deckCounts([...chosen]);
+  const onCount = all.filter(p => chosen.has(p.id)).length;
+  const packRows = KINDS.map(k => {
+    const list = all.filter(p => p.kind === k.kind);
+    if (!list.length) return "";
+    const on = list.filter(p => chosen.has(p.id)).length;
+    const bulk = host && list.length > 1 ? `<span class="form-actions">
+        <button class="btn small" type="button" data-pack-group="${k.kind}" data-on="1" ${on === list.length ? "disabled" : ""}>All</button>
+        <button class="btn small" type="button" data-pack-group="${k.kind}" data-on="0" ${on ? "" : "disabled"}>None</button></span>` : "";
+    return `<div class="pack-group ${k.kind}">
+      <div class="pack-group-head"><div><span class="eyebrow">${k.label} · ${on}/${list.length}</span>${k.hint ? `<p class="hint">${k.hint}</p>` : ""}</div>${bulk}</div>
+      <div class="pack-checks">${list.map(p => `<label class="check ${host ? "" : "disabled"}">
+        <input type="checkbox" id="pk-${esc(p.id)}" data-pack="${esc(p.id)}" ${chosen.has(p.id) ? "checked" : ""} ${off}>
+        <span class="row-main"><span class="row-title">${esc(p.name)}</span>
+          <span class="row-sub">${packBy(p)} · ${p.black.length} black · ${p.white.length} white</span></span></label>`).join("")}</div></div>`;
+  }).join("");
+  $("lobbySettings").innerHTML = `
+    <div class="settings-grid">${SETTINGS.map(o => `<div class="field"><label for="set-${o.key}">${o.label}</label>
+      <select id="set-${o.key}" data-setting="${o.key}" ${off}>${uniq(o.options.concat(s[o.key])).map(n => `<option value="${n}" ${s[o.key] === n ? "selected" : ""}>${o.fmt(n)}</option>`).join("")}</select></div>`).join("")}</div>
+    <p class="hint">${settingsNote(s)}</p>
+    <label class="check ${host ? "" : "disabled"}"><input type="checkbox" id="set-private" data-setting="private" ${s.private ? "checked" : ""} ${off}>
+      <span class="row-main"><span class="row-title">Private lobby</span><span class="row-sub">Hidden from open lobbies. Friends join with the code.</span></span></label>
+    <div class="pack-summary"><span class="eyebrow">Card packs in this game</span>
+      <span class="chip">${plural(onCount, "pack", "packs")} · ${counts.black} black · ${counts.white} white</span></div>${packRows}
+    ${host ? "" : `<p class="hint">Only the host can change these settings.</p>`}`;
+
+  if (host) {
+    const chk = startCheck();
+    $("lobbyStart").innerHTML = `<button class="btn primary" type="button" data-act="start" ${chk.ok ? "" : "disabled"}>Start game</button>
+      <span class="hint">${chk.ok ? `${plural(Object.keys(P).filter(present).length, "player", "players")} ready.` : esc(chk.why)}</span>`;
+  } else {
+    $("lobbyStart").innerHTML = `<span class="hint">Waiting for ${at(L.host)} to start the game.</span>
+      ${!room ? `<button class="btn small" type="button" data-act="take-over">Host not responding? Take over</button>` : ""}`;
+  }
+}
+
+function renderGame() {
+  const g = L.game;
+  if (!g) return;
+  const phase = g.phase, n = need(g.black), czar = g.czar;
+  const iAmCzar = czar === ME, seated = g.seats.includes(ME), host = isHost();
+  const mySub = P[ME] && P[ME].sub && P[ME].sub.gid === g.gid && P[ME].sub.round === g.round ? P[ME].sub.cards : null;
+  const subbed = pid => phase === "pick" ? (pid === ME ? !!mySub : !!subOf(pid)) : g.order.some(s => s.pid === pid);
+  let hand = (g.hands[ME] || []).slice();
+  if (phase === "pick" && mySub) for (const c of mySub) { const i = hand.indexOf(c); if (i >= 0) hand.splice(i, 1); }
+  selected = selected.filter(i => i < hand.length);
+  const key = g.gid + g.round + phase;
+  const fresh = key !== lastKey;
+  if (fresh) { lastKey = key; if (phase !== "judge") czarPick = null; }
+
+  const cfg = settings();
+  $("roundInfo").textContent = `Round ${g.round}${cfg.rounds ? ` of ${cfg.rounds}` : ""} · first to ${cfg.target}`;
+  $("rulesLine").textContent = `${settingsNote(cfg)} ${g.hand}-card hands.`;
+  updateTimer();
+
+  /* who the czar is looking at, from their presence */
+  let reading = -1;
+  if (phase === "judge" && !iAmCzar && room) {
+    const peer = room.peers().find(p => p.presence && p.presence.pid === czar && p.presence.lobby === code);
+    const look = peer && peer.presence.look;
+    if (look && look.gid === g.gid && look.round === g.round && Number.isInteger(look.k)) reading = look.k;
+  }
 
   /* black card, previewing whatever is being considered */
   let fill = null;
-  if (phase === "pick" && !iAmCzar) fill = S.selected.map(i => me.hand[i]);
-  else if (phase === "judge") fill = iAmCzar ? (S.czarPick != null ? S.order[S.czarPick].cards : null) : (S.reading >= 0 ? S.order[S.reading].cards : null);
-  else if (phase === "result" || phase === "over") fill = S.order.find(s => s.pid === S.winner).cards;
-  const stage = $("stage");
-  stage.classList.toggle("fresh", fresh && (phase === "pick"));
-  $("blackCard").innerHTML = blackCard(S.black, fill);
+  if (phase === "pick" && !iAmCzar && seated) fill = mySub || selected.map(i => hand[i]);
+  else if (phase === "judge") fill = iAmCzar ? (czarPick != null && g.order[czarPick] ? g.order[czarPick].cards : null) : (g.order[reading] ? g.order[reading].cards : null);
+  else if (phase === "result" || phase === "over") { const w = g.order.find(s => s.pid === g.winner); fill = w ? w.cards : null; }
+  $("stage").classList.toggle("fresh", fresh && phase === "pick");
+  $("blackCard").innerHTML = blackCard(g.black, fill);
 
   /* status line */
+  const waiting = g.seats.filter(pid => pid !== czar && present(pid) && !subbed(pid));
+  const pickWord = n === 1 ? "a card" : `${n} cards`;
   let status = "";
-  const waiting = S.players.filter((p, i) => i !== S.czar && !submitted(p.id));
   if (phase === "pick") {
-    if (iAmCzar) status = `You are the Card Czar this round. Everyone else is picking ${n === 1 ? "a card" : "2 cards"}; you choose the winner.`;
-    else if (!submitted(0)) status = `Pick ${n === 1 ? "a card" : "2 cards, in order,"} to complete the prompt. ${at(czar)} is judging this round.`;
-    else status = `Submitted. Waiting on ${waiting.map(at).join(", ")}.`;
+    if (!seated) status = `You joined mid-round. You'll be dealt in next round. ${at(czar)} is judging this one.`;
+    else if (iAmCzar) status = `You are the Card Czar this round. Everyone else is picking ${pickWord}; you choose the winner.`;
+    else if (!mySub) status = `Pick ${n === 1 ? "a card" : `${n} cards, in order,`} to complete the prompt. ${at(czar)} is judging this round.`;
+    else status = waiting.length ? `Submitted. Waiting on ${waiting.map(at).join(", ")}.` : `Submitted. Shuffling the submissions<span class="dots"></span>`;
   } else if (phase === "judge") {
     status = iAmCzar ? `All submissions are in. Read each one against the prompt and pick the funniest.` : `${at(czar)} is reviewing the submissions<span class="dots"></span>`;
   } else if (phase === "result") {
-    const w = S.players[S.winner];
-    status = S.winner === 0 ? `${at(czar)} merged your commit. You get a point.` : `${iAmCzar ? "You" : at(czar)} merged ${at(w)}'s commit. +1 to ${at(w)}.`;
+    const w = g.winner, to = w === ME ? "you" : at(w);
+    const next = cfg.rounds && g.round >= cfg.rounds ? " That was the last round." : cfg.next ? " Next round starts in a few seconds."
+      : host ? " Click Next round when everyone is ready." : " Waiting for the host to start the next round.";
+    if (g.randomWin) status = `Time ran out for ${iAmCzar ? "you" : at(czar)}, so a random submission won. +1 to ${to}.`;
+    else status = w === ME ? `${at(czar)} merged your commit. You get a point.` : `${iAmCzar ? "You" : at(czar)} merged ${at(w)}'s commit. +1 to ${at(w)}.`;
+    status += next;
   } else {
-    const w = S.players[S.winner];
-    status = S.winner === 0 ? `You reached ${S.target} points and won the game. Ship it.` : `${at(w)} reached ${S.target} points and won the game.`;
+    const champs = g.champions || [g.winner], pts = plural(champs.length ? g.scores[champs[0]] || 0 : 0, "point", "points");
+    if (!champs.length) status = `The round limit is up and nobody scored. Everyone loses.`;
+    else if (champs.length === 1) status = champs[0] === ME ? `You won the game with ${pts}. Ship it.` : `${at(champs[0])} won the game with ${pts}.`;
+    else {
+      const names = champs.slice().sort((x, y) => (y === ME) - (x === ME)).map(pid => pid === ME ? "You" : at(pid));
+      status = `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]} tied for the win with ${pts}.`;
+    }
   }
   $("status").innerHTML = status;
 
   /* face-down pile during picking */
   if (phase === "pick") {
-    const slots = S.players.map((p, i) => i === S.czar ? "" : submitted(p.id)
-      ? `<div class="slot down">Commits Against Humanity</div>` : `<div class="slot" aria-hidden="true"></div>`).join("");
-    $("pile").innerHTML = `<div class="pile-label">${S.subs.length} of ${S.players.length - 1} pushed</div><div class="slots">${slots}</div>`;
-  } else {
-    $("pile").innerHTML = "";
-  }
+    const others = g.seats.filter(pid => pid !== czar);
+    const slots = others.map(pid => subbed(pid) ? `<div class="slot down">Commits Against Humanity</div>` : `<div class="slot" aria-hidden="true"></div>`).join("");
+    $("pile").innerHTML = `<div class="pile-label">${others.filter(subbed).length} of ${others.length} pushed</div><div class="slots">${slots}</div>`;
+  } else $("pile").innerHTML = "";
 
-  /* scoreboard */
-  $("scores").innerHTML = S.players.map((p, i) => {
-    let chip = "";
-    const won = S.winner === p.id && phase !== "pick" && phase !== "judge";
+  /* scoreboard: everyone seated, everyone waiting for next round, and anyone who left with points */
+  const ids = uniq(g.seats.concat(Object.keys(P).sort(byJoined), Object.keys(g.scores).filter(pid => g.scores[pid] > 0)));
+  const target = cfg.target;
+  fetchPeople(ids.map(pid => P[pid] && P[pid].uid));
+  $("scores").innerHTML = ids.map(pid => {
+    const score = g.scores[pid] || 0, left = !P[pid], away = !left && (gone(pid) || !online(pid));
+    const won = phase === "over" ? (g.champions || [g.winner]).includes(pid) : phase === "result" && g.winner === pid;
+    let chip;
     if (won) chip = `<span class="chip won">${phase === "over" ? "winner" : "merged"}</span>`;
-    else if (i === S.czar) chip = `<span class="chip czar">czar</span>`;
-    else if (phase === "pick") chip = submitted(p.id) ? `<span class="chip done">pushed</span>` : `<span class="chip">${p.bot ? `thinking<span class="dots"></span>` : "your move"}</span>`;
-    const cells = Array.from({ length: S.target }, (_, k) => `<span class="cell ${k < p.score ? "l" + Math.min(4, 1 + Math.floor(k * 4 / S.target)) : ""}"></span>`).join("");
-    return `<li class="player ${won ? "is-winner" : ""}">
-      <span class="avatar">${identicon(p.name)}</span>
-      <span class="pname">@${esc(p.name)}${i === 0 ? " <em>(you)</em>" : ""}</span>
+    else if (left) chip = `<span class="chip">left</span>`;
+    else if (pid === czar && g.seats.includes(pid)) chip = `<span class="chip czar">czar</span>`;
+    else if (!g.seats.includes(pid)) chip = `<span class="chip">next round</span>`;
+    else if (away) chip = `<span class="chip">away</span>`;
+    else if (phase === "pick") chip = subbed(pid) ? `<span class="chip done">pushed</span>` : `<span class="chip">${pid === ME ? "your move" : `thinking<span class="dots"></span>`}</span>`;
+    else chip = "";
+    const cells = Array.from({ length: target }, (_, k) => `<span class="cell ${k < score ? "l" + Math.min(4, 1 + Math.floor(k * 4 / target)) : ""}"></span>`).join("");
+    const tags = [pid === ME ? "you" : "", pid === L.host ? "host" : ""].filter(Boolean).join(", ");
+    return `<li class="player ${won ? "is-winner" : ""} ${left || away ? "is-away" : ""}">
+      ${avHTML(lookOf(pid), "md")}
+      <span class="pname">@${esc(nameOf(pid))}${tags ? ` <em>(${tags})</em>` : ""}</span>
       <span class="pstate">${chip}</span>
-      <span class="graph" role="img" aria-label="${p.score} of ${S.target} points">${cells}</span>
-      <span class="pts">${p.score}/${S.target}</span></li>`;
+      <span class="graph" role="img" aria-label="${score} of ${target} points">${cells}</span>
+      <span class="pts">${score}/${target}</span></li>`;
   }).join("");
 
-  $("log").innerHTML = S.log.length
-    ? S.log.map(l => `<li><span class="h">${l.h}</span><span class="t"><b>@${esc(l.who)}</b> ${esc(l.what)}</span></li>`).join("")
+  $("log").innerHTML = g.log.length
+    ? g.log.map(l => `<li><span class="h">${esc(l.h)}</span><span class="t">${l.who ? `<b>@${esc(nameOf(l.who))}</b> ` : ""}${esc(l.what)}</span></li>`).join("")
     : `<li class="empty">No merges yet. Winning cards land here.</li>`;
 
-  /* tray: hand while picking, submissions while judging */
-  const tray = $("tray"), wrap = $("trayWrap");
-  wrap.classList.toggle("fresh", fresh);
+  $("hostTools").innerHTML = host
+    ? (phase === "over" ? "" : `<button class="btn small" type="button" data-act="skip">Skip round</button><button class="btn small danger" type="button" data-act="end">End game</button>`)
+    : !room ? `<button class="btn small" type="button" data-act="take-over">Host not responding? Take over</button>` : "";
+
+  /* tray: hand while picking, submissions afterwards */
+  const tray = $("tray");
+  $("trayWrap").classList.toggle("fresh", fresh);
   let title, hint = "", action = "";
   if (phase === "pick") {
     title = "Your hand";
-    const locked = iAmCzar || submitted(0);
-    if (iAmCzar) hint = "You sit this one out while you judge.";
-    else if (submitted(0)) hint = "Your card is in. New cards are dealt at the start of the next round.";
-    else hint = n === 1 ? "Tap a card to preview it on the prompt." : "Tap two cards in the order they should fill the blanks.";
+    const locked = !seated || iAmCzar || !!mySub;
+    if (!seated) hint = "You'll get cards when the next round starts.";
+    else if (iAmCzar) hint = "You sit this one out while you judge.";
+    else if (mySub) hint = "Your cards are in. New cards are dealt at the start of the next round.";
+    else hint = n === 1 ? "Tap a card to preview it on the prompt." : `Tap ${n} cards in the order they should fill the blanks.`;
     tray.className = "cards";
-    tray.innerHTML = me.hand.map((c, i) => {
-      const pos = S.selected.indexOf(i);
+    tray.innerHTML = hand.map((c, i) => {
+      const pos = selected.indexOf(i);
       return whiteCard(c, {
         tag: "button", i, cls: pos >= 0 ? "selected" : "",
         attrs: `type="button" data-hand="${i}" aria-pressed="${pos >= 0}" ${locked ? "disabled" : ""}`,
-        badge: pos >= 0 && n > 1 ? `<span class="badge">${pos + 1}</span>` : ""
+        badge: pos >= 0 && n > 1 ? `<span class="badge"><span>${pos + 1}</span></span>` : ""
       });
-    }).join("");
-    if (!locked) action = `<button class="btn primary" type="button" data-act="submit" ${S.selected.length === n ? "" : "disabled"}>Submit${n > 1 ? ` ${S.selected.length}/${n}` : ""}</button>`;
+    }).join("") || `<p class="empty">No cards yet.</p>`;
+    if (!locked) action = `<button class="btn primary" type="button" data-act="submit" ${selected.length === n ? "" : "disabled"}>Submit${n > 1 ? ` ${selected.length}/${n}` : ""}</button>`;
   } else {
     title = "Submissions";
     const canPick = phase === "judge" && iAmCzar;
-    if (canPick) hint = "Tap a submission to preview it, then award the point.";
+    const awarded = canPick && P[ME] && P[ME].pick && P[ME].pick.gid === g.gid && P[ME].pick.round === g.round;
+    if (canPick) hint = awarded ? "Point awarded. Waiting for the host to record it." : "Tap a submission to preview it, then award the point.";
     else if (phase === "judge") hint = "Submissions stay anonymous until the czar decides.";
     else hint = "Here is who played what.";
     tray.className = "subs";
-    tray.innerHTML = S.order.map((s, k) => {
-      const p = S.players[s.pid];
-      const cls = [canPick ? "can-pick" : "", canPick && S.czarPick === k ? "chosen" : "",
-        phase === "judge" && !iAmCzar && S.reading === k ? "reading" : "",
-        phase !== "judge" && s.pid === S.winner ? "winner" : ""].join(" ");
-      const by = phase === "judge" ? "" : `<span class="sub-by">@${esc(p.name)}${s.pid === 0 ? " (you)" : ""}${s.pid === S.winner ? ` <span class="chip won">merged</span>` : ""}</span>`;
+    tray.innerHTML = g.order.map((s, k) => {
+      const cls = [canPick ? "can-pick" : "", canPick && czarPick === k ? "chosen" : "",
+        phase === "judge" && !iAmCzar && reading === k ? "reading" : "",
+        phase !== "judge" && s.pid === g.winner ? "winner" : ""].join(" ");
+      const by = phase === "judge" ? "" : `<span class="sub-by">${avHTML(lookOf(s.pid), "sm")}@${esc(nameOf(s.pid))}${s.pid === ME ? " (you)" : ""}${s.pid === g.winner ? ` <span class="chip won">merged</span>` : ""}${s.auto ? ` <span class="chip">played by the timer</span>` : ""}</span>`;
       const inner = s.cards.map((c, j) => whiteCard(c, { tag: "span", i: k * 2 + j })).join("") + by;
       return canPick
-        ? `<button type="button" class="sub ${cls}" data-sub="${k}" aria-pressed="${S.czarPick === k}">${inner}</button>`
+        ? `<button type="button" class="sub ${cls}" data-sub="${k}" aria-pressed="${czarPick === k}">${inner}</button>`
         : `<div class="sub ${cls}">${inner}</div>`;
     }).join("");
-    if (canPick) action = `<button class="btn primary" type="button" data-act="award" ${S.czarPick != null ? "" : "disabled"}>Award the point</button>`;
-    if (phase === "result") action = `<button class="btn primary" type="button" data-act="next">Next round</button>`;
-    if (phase === "over") action = `<button class="btn primary" type="button" data-act="again">Play again</button>`;
+    if (canPick) action = `<button class="btn gold" type="button" data-act="award" ${czarPick != null && !awarded ? "" : "disabled"}>Award the point</button>`;
+    if (phase === "result" && host) action = `<button class="btn primary" type="button" data-act="next">Next round</button>`;
+    if (phase === "over") action = host ? `<button class="btn primary" type="button" data-act="again">Back to lobby</button>` : `<span class="hint">Waiting for the host to start another game.</span>`;
   }
   $("trayTitle").textContent = title;
   $("trayHint").textContent = hint;
@@ -587,50 +2079,172 @@ function render() {
 
 /* ---------- input ---------- */
 function toggleCard(i) {
-  const n = need(), pos = S.selected.indexOf(i);
-  if (pos >= 0) S.selected.splice(pos, 1);
-  else { if (S.selected.length >= n) S.selected.shift(); S.selected.push(i); }
+  const n = need(L.game.black), pos = selected.indexOf(i);
+  if (pos >= 0) selected.splice(pos, 1);
+  else { if (selected.length >= n) selected.shift(); selected.push(i); }
+}
+async function copyCode() {
+  const m = $("copyMsg");
+  try { await navigator.clipboard.writeText(code); m.textContent = "Copied."; }
+  catch { m.textContent = "Select the code above to copy it."; const r = document.createRange(); r.selectNodeContents($("lobbyCode")); getSelection().removeAllRanges(); getSelection().addRange(r); }
 }
 document.addEventListener("click", e => {
-  const h = e.target.closest("[data-hand]");
-  if (h && !h.disabled && S.phase === "pick") { toggleCard(+h.dataset.hand); return render(); }
-  const s = e.target.closest("[data-sub]");
-  if (s && S.phase === "judge" && S.czar === 0) { S.czarPick = +s.dataset.sub; return render(); }
-  const a = e.target.closest("[data-act]");
+  const t = e.target;
+  const h = t.closest("[data-hand]");
+  if (h && !h.disabled && L && L.game && L.game.phase === "pick") { toggleCard(+h.dataset.hand); return render(); }
+  const s = t.closest("[data-sub]");
+  if (s && L && L.game && L.game.phase === "judge" && L.game.czar === ME) {
+    czarPick = +s.dataset.sub; setPresence({ look: { gid: L.game.gid, round: L.game.round, k: czarPick } }); return render();
+  }
+  const j = t.closest("[data-join]");
+  if (j && !j.disabled) return joinLobby(j.dataset.join);
+  const k = t.closest("[data-kick]");
+  if (k && isHost()) { db.doc(`lobbies/${code}/players/${k.dataset.kick}`).delete().catch(writeError); return; }
+  const pg = t.closest("[data-pack-group]");
+  if (pg && !pg.disabled && isHost() && L.status === "lobby") {
+    const set = new Set(settings().packs), ids = allPacks().filter(p => p.kind === pg.dataset.packGroup).map(p => p.id);
+    for (const id of ids) pg.dataset.on === "1" ? set.add(id) : set.delete(id);
+    L.settings = { ...settings(), packs: [...set] }; commit();
+    return;
+  }
+  const ep = t.closest("[data-edit-pack]");
+  if (ep) return openPackForm(ep.dataset.editPack);
+  const cp = t.closest("[data-copy-pack]");
+  if (cp && !cp.disabled) return openPackForm(null, cp.dataset.copyPack);
+  const dp = t.closest("[data-del-pack]");
+  if (dp) {
+    const id = dp.dataset.delPack;
+    if (armedDelete !== id) { armedDelete = id; return renderPacks(); }
+    armedDelete = null;
+    if (editingPack === id) closePackForm();
+    db.doc("packs/" + id).delete().then(() => notice("Pack deleted.")).catch(writeError);
+    return;
+  }
+  const fc = t.closest("[data-face]");
+  if (fc && draft) { draft.face[fc.dataset.face] = +fc.dataset.val; draft.img = null; return renderProfile(); }
+  const a = t.closest("[data-act]");
   if (!a || a.disabled) return;
   const act = a.dataset.act;
-  if (act === "submit" && S.selected.length === need() && !submitted(0)) { submit(0, S.selected); S.selected = []; render(); drive(); }
-  else if (act === "award" && S.czarPick != null && S.phase === "judge") { award(S.czarPick); render(); }
-  else if (act === "next" && S.phase === "result") { startRound(); render(); drive(); }
-  else if (act === "again") { newGame(prefs); render(); drive(); }
-  else if (act === "cancel-setup") toggleSetup(false);
+  if (act === "open-profile") openProfile();
+  else if (act === "pf-save" && draft) saveRuler();
+  else if (act === "pf-cancel") { draft = null; render(); }
+  else if (act === "pf-random" && draft) { draft.face = seedFace(rid(6)); draft.img = null; renderProfile(); }
+  else if (act === "pf-clear-img" && draft) { draft.img = null; renderProfile(); }
+  else if (act === "join-code") joinLobby($("codeInput").value);
+  else if (act === "open-packs") { view = "packs"; render(); }
+  else if (act === "close-packs") { view = "home"; closePackForm(); render(); }
+  else if (act === "new-pack") openPackForm(null);
+  else if (act === "cancel-pack") closePackForm();
+  else if (act === "leave") leaveLobby();
+  else if (act === "copy-code") copyCode();
+  else if (act === "start") startGame();
+  else if (act === "take-over") maybeTakeOver(true);
+  else if (act === "submit") submitCards();
+  else if (act === "award") awardPick();
+  else if (act === "next" && isHost() && L.game.phase === "result") { startRound(L.game); commit(); }
+  else if (act === "skip" && isHost()) { skipRound(L.game, "The host skipped this round."); commit(); }
+  else if (act === "end" || act === "again") backToLobby();
 });
-
-function toggleSetup(open) {
-  const f = $("setup");
-  f.hidden = !open;
-  $("newGameBtn").setAttribute("aria-expanded", String(open));
-  if (open) {
-    $("nameInput").value = prefs.name; $("botsInput").value = String(prefs.bots); $("targetInput").value = String(prefs.target);
-    $("nameInput").focus();
+document.addEventListener("change", e => {
+  if (!isHost() || L.status !== "lobby") return;
+  const key = e.target.dataset.setting;
+  if (key) { L.settings = { ...settings(), [key]: key === "private" ? e.target.checked : +e.target.value }; commit(); }
+  else if (e.target.dataset.pack) {
+    const set = new Set(settings().packs);
+    e.target.checked ? set.add(e.target.dataset.pack) : set.delete(e.target.dataset.pack);
+    L.settings.packs = [...set]; commit();
   }
-}
-$("newGameBtn").addEventListener("click", () => toggleSetup($("setup").hidden));
-$("setup").addEventListener("submit", e => {
-  e.preventDefault();
-  prefs = { name: $("nameInput").value || "you", bots: +$("botsInput").value, target: +$("targetInput").value };
-  savePrefs(); toggleSetup(false);
-  newGame(prefs); render(); drive();
 });
+$("startForm").addEventListener("submit", e => { e.preventDefault(); createLobby(); });
+$("codeInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); joinLobby($("codeInput").value); } });
+$("packForm").addEventListener("submit", savePack);
+$("renameForm").addEventListener("submit", rename);
+$("pfFile").addEventListener("change", e => { loadPicture(e.target.files[0]); e.target.value = ""; });
+$("pfName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); saveRuler(); } });
 
-/* ---------- boot (keeps the game going across page updates) ---------- */
-window.claude?.hot?.snapshot?.(() => S);
-function start(data) {
-  if (data && Array.isArray(data.players)) S = data;
-  else newGame(prefs);
-  render(); drive();
+/* ---------- starfield ---------- */
+function starfield() {
+  const cv = $("stars"), cx = cv.getContext("2d");
+  let stars = [], w = 0, h = 0;
+  const size = () => {
+    const r = Math.min(2, devicePixelRatio || 1);
+    w = innerWidth; h = innerHeight; cv.width = w * r; cv.height = h * r; cx.setTransform(r, 0, 0, r, 0, 0);
+    stars = Array.from({ length: Math.round(w * h / 5200) }, () => ({ x: Math.random() * w, y: Math.random() * h, r: Math.random() ** 3 * 1.5 + .25, t: Math.random() * 6.3, v: .4 + Math.random() * 1.6, hue: Math.random() < .15 ? 40 : 185 }));
+  };
+  const draw = now => {
+    cx.clearRect(0, 0, w, h);
+    for (const s of stars) {
+      const a = reduced ? .7 : .45 + .45 * Math.sin(s.t + now / 1000 * s.v);
+      cx.fillStyle = `hsla(${s.hue}, 70%, 88%, ${a})`;
+      cx.beginPath(); cx.arc(s.x, s.y, s.r, 0, 6.283); cx.fill();
+    }
+  };
+  let last = 0;
+  const loop = now => { if (!document.hidden && now - last > 66) { last = now; draw(now); } requestAnimationFrame(loop); };
+  size(); draw(0);
+  addEventListener("resize", () => { size(); draw(performance.now()); });
+  if (!reduced) requestAnimationFrame(loop);
 }
-window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+starfield();
+
+/* ---------- boot ---------- */
+async function boot() {
+  $("nameInput").value = myName;
+  render();
+  const use = name => window.claude && window.claude.use ? window.claude.use(name).catch(() => null) : Promise.resolve(null);
+  const [d, r, u] = await Promise.all([use("db"), use("room"), use("user")]);
+  db = d;
+  if (!db) {
+    notice("This game is multiplayer only. Open it from its claude.ai link while signed in to play.", { error: true, sticky: true });
+    return render();
+  }
+  if (u && (await u.can("data.write")) === false) {
+    canWrite = false;
+    notice("You can look around, but to play you need edit access. Ask the person who shared this game to give it to you.", { error: true, sticky: true });
+  }
+  if (r) {
+    room = r;
+    room.onConnection(c => { if (c && !roomSince) roomSince = Date.now(); }, () => { room = null; });
+    room.onPeers(() => { trackPresence(); if (code && L && L.game && L.game.phase === "judge") render(); }, () => { room = null; });
+    setPresence({ look: null });
+  }
+  /* Your ruler lives at profiles/<your id>: everyone reads the standings, each person writes only their own. */
+  uid = u ? await u.id().catch(() => null) : null;
+  if (uid && !/^[\w-]{1,128}$/.test(uid)) uid = null;
+  if (uid) {
+    try {
+      const s = await db.doc("profiles/" + uid).get();
+      if (s.exists) adoptProfile(s.data()); else if (canWrite) saveProfile();
+    } catch {}
+    db.doc("profiles/" + uid).onSnapshot(s => { if (s.exists && !saving && !saveAgain) { adoptProfile(s.data()); render(); } }, () => {});
+  }
+  db.collection("profiles").orderBy("xp", "desc").limit(50).onSnapshot(s => {
+    standings = s.docs.map(d => ({ id: d.id, ...cleanProfile(d.data(), d.id) }));
+    for (const d of s.docs) people[d.id] = d.data();
+    render();
+  }, () => {});
+  db.collection("packs").onSnapshot(s => {
+    packs = {};
+    for (const doc of s.docs) packs[doc.id] = doc.data();
+    if (armedDelete && !packs[armedDelete]) armedDelete = null;
+    render();
+  }, dbErr);
+  db.collection("directory").orderBy("updated", "desc").limit(30).onSnapshot(s => {
+    directory = s.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (!code) render();
+  }, dbErr);
+  setInterval(tick, 1000);
+
+  /* come back to the lobby this browser was in before a reload */
+  const saved = tab.get("cah-lobby", null);
+  if (saved && /^[A-Z]{4}$/.test(saved) && canWrite) {
+    try {
+      const [ls, ps] = await Promise.all([db.doc("lobbies/" + saved).get(), db.doc(`lobbies/${saved}/players/${ME}`).get()]);
+      if (ls.exists && ps.exists) { if (!myName) myName = profile.name = cleanName(ps.data().name); await enterLobby(saved); return; }
+    } catch {}
+    tab.set("cah-lobby", null);
+  }
+  render();
+}
+boot();
 </script>
-</body>
-</html>
