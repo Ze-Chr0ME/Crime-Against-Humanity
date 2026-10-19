@@ -5,46 +5,74 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<meta name="theme-color" content="#0f1116">
+<script>
+/* Apply the saved theme before first paint so a light-theme player never sees a dark flash (or the reverse) */
+(function () {
+  var t = "dark";
+  try { t = localStorage.getItem("cah-theme") || "dark"; } catch (e) {}
+  if (t === "system") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
 <style>
 /* Layout: a card table. The page is the table; panels are plain trays around it; the black and white cards are the only heavy objects.
    One signal colour (hazard yellow) marks whatever is yours or needs you: your selection, your progress, the primary action. */
+/* Themes. Dark is the default; the others override it through data-theme on <html> (set before first paint by the script above).
+   The selectors are bare [data-theme] so a swatch in the theme menu can carry one and preview that theme in place. */
+:root, [data-theme="dark"] {
+  --bg: #0f1116; --surface: #171a21; --sunken: #1e222a; --line: #2a2f39; --line-strong: #3d4350;
+  --ink: #eceef2; --muted: #9ba2ad; --faint: #6c737e;
+  --signal: #ffd21a; --signal-edge: #e3b500; --signal-hover: #ffdb45; --on-signal: #121419; --signal-soft: rgba(255, 210, 26, .13);
+  --meter: #ffd21a; --inverse: #eceef2; --on-inverse: #121419;
+  --danger: #ff6d55; --danger-soft: rgba(255, 109, 85, .12); --ok: #4cc38a;
+  --card-black: #050506; --card-black-edge: #343a45; --card-white: #ffffff; --card-ink: #0c0c0e; --card-meta: #6b7079;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 26px -14px rgba(0, 0, 0, .8);
+  --shadow-lift: 0 2px 4px rgba(0, 0, 0, .45), 0 20px 34px -14px rgba(0, 0, 0, .85);
+  color-scheme: dark;
+}
 :root {
-  --bg: #e7e9ed; --surface: #ffffff; --sunken: #f2f3f6; --line: #d6dae1; --line-strong: #b5bcc7;
-  --ink: #121419; --muted: #59606b; --faint: #8a919b;
-  --signal: #ffd21a; --signal-edge: #e3b500; --on-signal: #121419; --signal-soft: rgba(255, 210, 26, .24);
-  --meter: #121419; --inverse: #121419; --on-inverse: #f4f5f7;
-  --danger: #c0361c; --danger-soft: rgba(192, 54, 28, .09); --ok: #1d7f45;
-  --card-black: #0c0c0e; --card-black-edge: #0c0c0e; --card-white: #ffffff; --card-ink: #0c0c0e; --card-meta: #6b7079;
-  --shadow: 0 1px 2px rgba(18, 20, 25, .08), 0 10px 24px -14px rgba(18, 20, 25, .4);
-  --shadow-lift: 0 2px 4px rgba(18, 20, 25, .1), 0 18px 32px -14px rgba(18, 20, 25, .45);
   --display: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --body: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
   --r: 14px;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f1116; --surface: #171a21; --sunken: #1e222a; --line: #2a2f39; --line-strong: #3d4350;
-    --ink: #eceef2; --muted: #9ba2ad; --faint: #6c737e;
-    --signal-soft: rgba(255, 210, 26, .13);
-    --meter: #ffd21a; --inverse: #eceef2; --on-inverse: #121419;
-    --danger: #ff6d55; --danger-soft: rgba(255, 109, 85, .12); --ok: #4cc38a;
-    --card-black: #050506; --card-black-edge: #343a45;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 26px -14px rgba(0, 0, 0, .8);
-    --shadow-lift: 0 2px 4px rgba(0, 0, 0, .45), 0 20px 34px -14px rgba(0, 0, 0, .85);
-    color-scheme: dark;
-  }
+/* Light themes share the paler signal wash, ink meter and soft shadows */
+[data-theme="light"], [data-theme="paper"] {
+  --signal-soft: rgba(255, 210, 26, .24);
+  --meter: #121419; --inverse: #121419; --on-inverse: #f4f5f7;
+  --danger: #c0361c; --danger-soft: rgba(192, 54, 28, .09); --ok: #1d7f45;
+  --card-black: #0c0c0e; --card-black-edge: #0c0c0e;
+  --shadow: 0 1px 2px rgba(18, 20, 25, .08), 0 10px 24px -14px rgba(18, 20, 25, .4);
+  --shadow-lift: 0 2px 4px rgba(18, 20, 25, .1), 0 18px 32px -14px rgba(18, 20, 25, .45);
+  color-scheme: light;
 }
-:root[data-theme="dark"] {
-  --bg: #0f1116; --surface: #171a21; --sunken: #1e222a; --line: #2a2f39; --line-strong: #3d4350;
-  --ink: #eceef2; --muted: #9ba2ad; --faint: #6c737e;
-  --signal-soft: rgba(255, 210, 26, .13);
-  --meter: #ffd21a; --inverse: #eceef2; --on-inverse: #121419;
-  --danger: #ff6d55; --danger-soft: rgba(255, 109, 85, .12); --ok: #4cc38a;
-  --card-black: #050506; --card-black-edge: #343a45;
-  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 26px -14px rgba(0, 0, 0, .8);
-  --shadow-lift: 0 2px 4px rgba(0, 0, 0, .45), 0 20px 34px -14px rgba(0, 0, 0, .85);
-  color-scheme: dark;
+[data-theme="light"] {
+  --bg: #e7e9ed; --surface: #ffffff; --sunken: #f2f3f6; --line: #d6dae1; --line-strong: #b5bcc7;
+  --ink: #121419; --muted: #59606b; --faint: #8a919b;
+}
+/* Newsprint: warm off-white, like the rules sheet in the box */
+[data-theme="paper"] {
+  --bg: #e9e1d1; --surface: #faf6ee; --sunken: #f2ebde; --line: #d8cdb8; --line-strong: #b9aa8f;
+  --ink: #1d1914; --muted: #5f5649; --faint: #8e8370;
+}
+/* Felt: the green baize of a card table */
+[data-theme="felt"] {
+  --bg: #0c3322; --surface: #12422d; --sunken: #0f3a28; --line: #1e5a3e; --line-strong: #2d7552;
+  --ink: #eef6f0; --muted: #a6c6b2; --faint: #6f9c82;
+  --card-black-edge: #2c4a3b;
+}
+/* Midnight: true black, for OLED screens */
+[data-theme="oled"] {
+  --bg: #000000; --surface: #0b0b0d; --sunken: #131316; --line: #212126; --line-strong: #36363d;
+  --ink: #f2f2f4; --muted: #9a9aa3; --faint: #65656e;
+  --card-black-edge: #3a3a42;
+}
+/* Crimson: a dark wine red */
+[data-theme="crimson"] {
+  --bg: #190b0f; --surface: #241217; --sunken: #2c171d; --line: #42212a; --line-strong: #5d2f3a;
+  --ink: #f6eaec; --muted: #c39ea5; --faint: #8a636b;
+  --card-black-edge: #4a2c33;
 }
 
 [hidden] { display: none !important; }
@@ -131,7 +159,7 @@ h1, h2, h3 { text-wrap: balance; }
 .btn:hover:not(:disabled) { border-color: var(--ink); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn.primary { background: var(--signal); color: var(--on-signal); border-color: var(--signal-edge); }
-.btn.primary:hover:not(:disabled) { background: #ffdb45; border-color: var(--signal-edge); }
+.btn.primary:hover:not(:disabled) { background: var(--signal-hover); border-color: var(--signal-edge); }
 .btn.gold { background: var(--inverse); color: var(--on-inverse); border-color: var(--inverse); }
 .btn.gold:hover:not(:disabled) { opacity: .88; }
 .btn.small { min-height: 32px; padding: 0 11px; font-size: 13px; border-radius: 8px; }
@@ -276,6 +304,34 @@ h1, h2, h3 { text-wrap: balance; }
 .ach-btn .count { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 .ach-btn[aria-expanded="true"] { border-color: var(--ink); }
 @media (max-width: 720px) { .ach-wrap { position: static; } }
+/* Theme picker: each swatch carries its own data-theme, so it paints with that theme's tokens */
+.theme-wrap { position: relative; }
+.theme-btn svg { width: 15px; height: 15px; flex: none; }
+.theme-btn[aria-expanded="true"] { border-color: var(--ink); }
+.theme-menu { width: min(340px, calc(100vw - 32px)); gap: 12px; }
+.themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.theme-opt {
+  display: grid; gap: 7px; width: 100%; padding: 6px 6px 8px; cursor: pointer; text-align: left;
+  background: var(--sunken); border: 1px solid var(--line); border-radius: 10px; font-size: 13px; font-weight: 600;
+  transition: border-color .15s;
+}
+.theme-opt:hover { border-color: var(--line-strong); }
+.theme-opt[aria-checked="true"] { border-color: var(--signal-edge); box-shadow: 0 0 0 1px var(--signal-edge); }
+.theme-opt .tname { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding-inline: 2px; }
+.theme-opt .tname svg { width: 14px; height: 14px; color: var(--signal-edge); }
+.theme-sw {
+  position: relative; display: block; height: 44px; border-radius: 6px; overflow: hidden;
+  background: var(--bg); box-shadow: inset 0 0 0 1px var(--line);
+}
+/* A tray, a black card and a signal dot: enough to read the theme at a glance */
+.theme-sw::before { content: ""; position: absolute; inset: 8px 34px 8px 8px; border-radius: 4px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.theme-sw::after { content: ""; position: absolute; top: 8px; right: 8px; width: 18px; height: 26px; border-radius: 3px; background: var(--card-black); box-shadow: inset 0 0 0 1px var(--card-black-edge); }
+.theme-sw i { position: absolute; z-index: 1; left: 16px; top: 17px; width: 10px; height: 10px; border-radius: 50%; background: var(--signal); }
+.theme-sw b { position: absolute; z-index: 1; left: 32px; top: 19px; width: 40%; height: 6px; border-radius: 3px; background: var(--ink); opacity: .7; }
+/* "Match system" shows dark and light split down the middle */
+.theme-sw.split { background: linear-gradient(90deg, #0f1116 50%, #e7e9ed 50%); }
+.theme-sw.split::before, .theme-sw.split::after, .theme-sw.split i, .theme-sw.split b { display: none; }
+@media (max-width: 720px) { .theme-wrap { position: static; } .theme-btn .tlabel { display: none; } }
 .ach-head { display: grid; gap: 8px; }
 .ach-head .ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .ach-head .ptitle span { font-family: var(--mono); font-size: 12.5px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -490,6 +546,10 @@ button.card:disabled { cursor: default; opacity: .55; }
       <div class="ach-wrap">
         <button id="achBtn" class="btn small ach-btn" type="button" data-act="toggle-ach" aria-haspopup="true" aria-expanded="false" aria-controls="achMenu"></button>
         <section id="achMenu" class="menu" aria-label="Achievements" hidden></section>
+      </div>
+      <div class="theme-wrap">
+        <button id="themeBtn" class="btn small theme-btn" type="button" data-act="toggle-theme" aria-haspopup="true" aria-expanded="false" aria-controls="themeMenu"></button>
+        <section id="themeMenu" class="menu theme-menu" aria-label="Theme" hidden></section>
       </div>
       <div class="top-actions">
         <span id="roundInfo" class="chip" hidden></span>
@@ -1594,7 +1654,9 @@ const ICONS = {
   wins: `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12 1 4l4 3 3-5 3 5 4-3-1 8Z" fill="currentColor"/><rect x="2" y="13" width="12" height="1.6" fill="currentColor"/></svg>`,
   judged: `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5Z"/><circle cx="8" cy="8" r="2.2" fill="currentColor"/></svg>`,
   trophy: `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2h7v4a3.5 3.5 0 0 1-7 0Z" fill="currentColor"/><path d="M4.5 3.5H2v.8A2.6 2.6 0 0 0 4.7 7M11.5 3.5H14v.8A2.6 2.6 0 0 1 11.3 7M8 9.5v3M5 14h6"/></svg>`,
-  lock: `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>`
+  lock: `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>`,
+  palette: `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5a6.5 6.5 0 1 0 0 13c1 0 1.5-.6 1.5-1.4 0-1-.9-1.3-.9-2.2 0-.8.6-1.4 1.4-1.4h1.6a2.9 2.9 0 0 0 2.9-2.9C14.5 3.9 11.6 1.5 8 1.5Z"/><circle cx="4.8" cy="7.2" r="1" fill="currentColor" stroke="none"/><circle cx="7.2" cy="4.4" r="1" fill="currentColor" stroke="none"/><circle cx="10.6" cy="5.2" r="1" fill="currentColor" stroke="none"/></svg>`,
+  check: `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8.5 3 3 7-7"/></svg>`
 };
 function renderTop() {
   const { lvl, into, need: n } = levelOf(profile.xp), s = profile.stats;
@@ -1989,19 +2051,63 @@ async function copyCode() {
   try { await navigator.clipboard.writeText(code); m.textContent = "Copied."; }
   catch { m.textContent = "Select the code above to copy it."; const r = document.createRange(); r.selectNodeContents($("lobbyCode")); getSelection().removeAllRanges(); getSelection().addRange(r); }
 }
-/* Top-bar dropdowns: the ruler dossier under the profile chip and the achievements list. One is open at a time. */
+/* Themes: a per-browser preference. Dark unless the player picks otherwise; "system" follows the OS light/dark setting. */
+const THEMES = [
+  { id: "dark", label: "Dark" },
+  { id: "light", label: "Light" },
+  { id: "felt", label: "Felt" },
+  { id: "oled", label: "Midnight" },
+  { id: "crimson", label: "Crimson" },
+  { id: "paper", label: "Newsprint" },
+  { id: "system", label: "Match system" }
+];
+const lightOS = matchMedia("(prefers-color-scheme: light)");
+let themePref = store.get("cah-theme", "dark");
+if (!THEMES.some(t => t.id === themePref)) themePref = "dark";
+function applyTheme() {
+  const t = themePref === "system" ? (lightOS.matches ? "light" : "dark") : themePref;
+  document.documentElement.setAttribute("data-theme", t);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+  const cur = THEMES.find(x => x.id === themePref);
+  $("themeBtn").innerHTML = `${ICONS.palette}<span class="tlabel">${cur.label}</span>`;
+  $("themeBtn").setAttribute("aria-label", `Theme: ${cur.label}`);
+  if (menuOpen === "theme") renderThemes();
+}
+function renderThemes() {
+  $("themeMenu").innerHTML = `
+    <h2 class="ptitle">Theme</h2>
+    <ul class="themes" role="radiogroup" aria-label="Theme">${THEMES.map(t => `
+      <li><button class="theme-opt" type="button" role="radio" aria-checked="${t.id === themePref}" data-theme-pick="${t.id}">
+        <span class="theme-sw${t.id === "system" ? " split" : ""}"${t.id === "system" ? "" : ` data-theme="${t.id}"`}><i></i><b></b></span>
+        <span class="tname">${t.label}${t.id === themePref ? ICONS.check : ""}</span>
+      </button></li>`).join("")}
+    </ul>`;
+}
+function setTheme(id) {
+  themePref = id; store.set("cah-theme", id);
+  applyTheme();
+  const b = $("themeMenu").querySelector(`[data-theme-pick="${id}"]`); if (b) b.focus();
+}
+lightOS.addEventListener("change", () => { if (themePref === "system") applyTheme(); });
+
+/* Top-bar dropdowns: the ruler dossier under the profile chip, the achievements list and the theme picker. One is open at a time. */
 let menuOpen = null;
-const MENUS = { ruler: ["meChip", "rulerCard"], ach: ["achBtn", "achMenu"] };
+const MENUS = { ruler: ["meChip", "rulerCard", ".me-wrap"], ach: ["achBtn", "achMenu", ".ach-wrap"], theme: ["themeBtn", "themeMenu", ".theme-wrap"] };
 function setMenu(which) {
   menuOpen = which && !(which === "ruler" && draft) ? which : null;
   for (const [k, [btn, box]] of Object.entries(MENUS)) { $(box).hidden = menuOpen !== k; $(btn).setAttribute("aria-expanded", menuOpen === k); }
   if (menuOpen === "ruler") renderRuler();
   if (menuOpen === "ach") renderAchievements();
+  if (menuOpen === "theme") renderThemes();
 }
+applyTheme();
 document.addEventListener("keydown", e => { if (e.key === "Escape" && menuOpen) { const btn = MENUS[menuOpen][0]; setMenu(null); $(btn).focus(); } });
 document.addEventListener("click", e => {
   const t = e.target;
-  if (menuOpen && !t.closest(menuOpen === "ruler" ? ".me-wrap" : ".ach-wrap")) setMenu(null);
+  if (menuOpen && !t.closest(MENUS[menuOpen][2])) setMenu(null);
+  const tp = t.closest("[data-theme-pick]");
+  if (tp) return setTheme(tp.dataset.themePick);
   const h = t.closest("[data-hand]");
   if (h && !h.disabled && L && L.game && L.game.phase === "pick") { toggleCard(+h.dataset.hand); return render(); }
   const s = t.closest("[data-sub]");
@@ -2040,6 +2146,7 @@ document.addEventListener("click", e => {
   const act = a.dataset.act;
   if (act === "toggle-menu") setMenu(menuOpen === "ruler" ? null : "ruler");
   else if (act === "toggle-ach") setMenu(menuOpen === "ach" ? null : "ach");
+  else if (act === "toggle-theme") setMenu(menuOpen === "theme" ? null : "theme");
   else if (act === "open-profile") { setMenu(null); openProfile(); }
   else if (act === "pf-save" && draft) saveRuler();
   else if (act === "pf-cancel") { draft = null; render(); }
