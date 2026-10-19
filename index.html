@@ -105,7 +105,10 @@ h1, h2, h3 { text-wrap: balance; }
 @media (max-width: 720px) {
   .top-right { justify-content: flex-start; width: 100%; }
   .me-wrap { order: -1; }
-  .menu { left: 0; right: auto; }
+  /* Both dropdowns hang from the full-width top-right block so they stay on a phone screen */
+  .top-right { position: relative; }
+  .me-wrap { position: static; }
+  .menu { left: 0; right: 0; width: auto; }
   .res-item small { display: none; }
 }
 
@@ -267,12 +270,26 @@ h1, h2, h3 { text-wrap: balance; }
 .stat dt { font-size: 12.5px; color: var(--muted); }
 .stat dd { margin: 0; font-family: var(--display); font-size: 24px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 @media (max-width: 420px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat:nth-child(3) { border-top: 1px solid var(--line); } }
-.traits { display: flex; flex-wrap: wrap; gap: 6px; }
-.trait {
-  display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; cursor: help;
-  color: var(--on-signal); background: var(--signal); border: 1px solid var(--signal-edge);
-}
-.trait.locked { color: var(--faint); background: none; border: 1px dashed var(--line-strong); font-weight: 500; }
+/* ---------- Achievements dropdown ---------- */
+.ach-wrap { position: relative; }
+.ach-btn svg { width: 15px; height: 15px; flex: none; }
+.ach-btn .count { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ach-btn[aria-expanded="true"] { border-color: var(--ink); }
+@media (max-width: 720px) { .ach-wrap { position: static; } }
+.ach-head { display: grid; gap: 8px; }
+.ach-head .ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.ach-head .ptitle span { font-family: var(--mono); font-size: 12.5px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.achs { list-style: none; margin: 0 -6px; padding: 0 6px; display: grid; gap: 6px; max-height: min(60vh, 460px); overflow-y: auto; overscroll-behavior: contain; }
+.ach { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1px 12px; align-items: center; padding: 10px; border-radius: 10px; border: 1px solid var(--line); }
+.ach.done { background: var(--signal-soft); border-color: var(--signal-edge); }
+.ach-badge { grid-row: span 3; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--faint); border: 1px dashed var(--line-strong); box-sizing: border-box; }
+.ach-badge svg { width: 17px; height: 17px; }
+.ach.done .ach-badge { color: var(--on-signal); background: var(--signal); border: 1px solid var(--signal-edge); }
+.ach-name { font-weight: 700; font-size: 14px; }
+.ach:not(.done) .ach-name { color: var(--muted); }
+.ach-desc { font-size: 12.5px; color: var(--muted); }
+.ach-prog { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; margin-top: 5px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ach.done .ach-prog { color: var(--ink); }
 .rank-n { font-family: var(--mono); font-weight: 600; font-size: 13px; color: var(--muted); width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; font-variant-numeric: tabular-nums; }
 .row.top1 .rank-n { background: var(--signal); color: var(--on-signal); }
 .std { grid-template-columns: auto auto minmax(0, 1fr) auto; }
@@ -463,6 +480,10 @@ button.card:disabled { cursor: default; opacity: .55; }
       <div class="me-wrap">
         <button id="meChip" class="me-chip" type="button" data-act="toggle-menu" aria-haspopup="true" aria-expanded="false" aria-controls="rulerCard"></button>
         <section id="rulerCard" class="menu ruler" aria-label="Your ruler" hidden></section>
+      </div>
+      <div class="ach-wrap">
+        <button id="achBtn" class="btn small ach-btn" type="button" data-act="toggle-ach" aria-haspopup="true" aria-expanded="false" aria-controls="achMenu"></button>
+        <section id="achMenu" class="menu" aria-label="Achievements" hidden></section>
       </div>
       <div class="top-actions">
         <span id="roundInfo" class="chip" hidden></span>
@@ -766,6 +787,7 @@ const SETTINGS = [
 const settings = () => ({ ...DEFAULTS, ...(L && L.settings) });
 const STALE_MS = 3 * 3600e3;      // open-lobby list hides lobbies idle longer than this
 const PRUNE_MS = 48 * 3600e3;     // lobbies idle longer than this get deleted when someone creates a lobby
+const EMPTY_MS = 60000;           // a lobby with nobody's page open this long gets closed
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 const MAX_CARDS = 400, MAX_CARD_LEN = 150;
 
@@ -878,7 +900,7 @@ function portrait(face) {
 const validImg = s => typeof s === "string" && s.length < 60000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s) ? s : null;
 const avHTML = (look, size = "", lvl = true) => `<span class="av ${size}"><span class="pt">${look.img ? `<img src="${esc(look.img)}" alt="">` : portrait(look.face)}</span>${lvl ? `<span class="lv">${look.lvl || 1}</span>` : ""}</span>`;
 
-/* ---------- ruler profile: XP, level, stats, traits ---------- */
+/* ---------- ruler profile: XP, level, stats, achievements ---------- */
 /* XP needed to go from level l to l + 1 grows by 50 each level. */
 const stepXP = l => 100 + 50 * (l - 1);
 function levelOf(xp) {
@@ -890,16 +912,18 @@ const RANKS = [[1, "Cadet"], [3, "Ensign"], [5, "Lieutenant"], [8, "Commander"],
 const rankOf = lvl => RANKS.filter(r => lvl >= r[0]).pop()[1];
 const XP = { round: 10, merged: 50, judged: 15, game: 40, victory: 150 };
 const STAT_KEYS = ["games", "wins", "merged", "judged", "cards", "lucky", "big"];
-const TRAITS = [
-  { name: "First Contact", desc: "Finish your first game.", ok: s => s.games >= 1 },
-  { name: "Silver-Tongued", desc: "Win 10 rounds.", ok: s => s.merged >= 10 },
-  { name: "Arbiter", desc: "Judge 20 rounds as the Card Czar.", ok: s => s.judged >= 20 },
-  { name: "Prolific", desc: "Play 100 cards.", ok: s => s.cards >= 100 },
-  { name: "Lucky", desc: "Win a round on the timer's random pick.", ok: s => s.lucky >= 1 },
-  { name: "Federation Builder", desc: "Finish a game with 6 or more players.", ok: s => s.big >= 1 },
-  { name: "Hegemon", desc: "Win 5 games.", ok: s => s.wins >= 5 },
-  { name: "Galactic Veteran", desc: "Finish 25 games.", ok: s => s.games >= 25 }
+/* Each achievement unlocks once `have(stats)` reaches `goal`. */
+const ACHIEVEMENTS = [
+  { name: "First Contact", desc: "Finish your first game.", have: s => s.games, goal: 1 },
+  { name: "Silver-Tongued", desc: "Win 10 rounds.", have: s => s.merged, goal: 10 },
+  { name: "Arbiter", desc: "Judge 20 rounds as the Card Czar.", have: s => s.judged, goal: 20 },
+  { name: "Prolific", desc: "Play 100 cards.", have: s => s.cards, goal: 100 },
+  { name: "Lucky", desc: "Win a round on the timer's random pick.", have: s => s.lucky, goal: 1 },
+  { name: "Federation Builder", desc: "Finish a game with 6 or more players.", have: s => s.big, goal: 1 },
+  { name: "Hegemon", desc: "Win 5 games.", have: s => s.wins, goal: 5 },
+  { name: "Galactic Veteran", desc: "Finish 25 games.", have: s => s.games, goal: 25 }
 ];
+const unlocked = (a, s) => a.have(s) >= a.goal;
 let uid = null;                // the viewer's account id for this game, from the user capability
 let people = {};               // uid -> profile documents from the shared store (standings + anyone seated with you)
 let standings = [];            // top profiles by XP
@@ -970,7 +994,7 @@ const seatFields = () => ({ name: myName, face: profile.face, lvl: levelOf(profi
 function earn() {
   const g = L && L.game;
   if (!g || !g.seats || !g.seats.includes(ME) || (g.phase !== "result" && g.phase !== "over")) return;
-  const gains = [], s = profile.stats, before = new Set(TRAITS.filter(t => t.ok(s))), lvl0 = levelOf(profile.xp).lvl;
+  const gains = [], s = profile.stats, before = new Set(ACHIEVEMENTS.filter(a => unlocked(a, s))), lvl0 = levelOf(profile.xp).lvl;
   const mark = k => { const key = `${ME}:${g.gid}:${k}`; if (profile.awarded.includes(key)) return false; profile.awarded.push(key); return true; };
   if (g.winner && g.order.length && mark(g.round)) {
     const mine = g.order.find(o => o.pid === ME);
@@ -989,7 +1013,7 @@ function earn() {
   for (const [n, why] of gains) toast(`+${n} XP`, why);
   const lvl = levelOf(profile.xp).lvl;
   if (lvl > lvl0) toast("Promoted", `Level ${lvl}: ${rankOf(lvl)}`, "", true);
-  for (const t of TRAITS) if (t.ok(s) && !before.has(t)) toast("New trait", t.name, t.desc, true);
+  for (const a of ACHIEVEMENTS) if (unlocked(a, s) && !before.has(a)) toast("Achievement unlocked", a.name, a.desc, true);
   saveProfile(); syncSeat();
 }
 
@@ -1190,18 +1214,47 @@ async function leaveLobby() {
   } catch (e) { writeError(e); }
   exitLobby("");
 }
+async function closeLobby(c) {
+  const ps = await db.collection(`lobbies/${c}/players`).get();
+  for (const p of ps.docs) await db.doc(`lobbies/${c}/players/${p.id}`).delete();
+  await db.doc("lobbies/" + c).delete();
+  await db.doc("directory/" + c).delete();
+}
 /* Lobbies abandoned for days get cleared out so the store doesn't fill up. */
 async function pruneOldLobbies() {
   try {
     const old = await db.collection("directory").orderBy("updated", "asc").limit(10).get();
     for (const d of old.docs) {
       if (Date.now() - (d.data().updated || 0) < PRUNE_MS) break;
-      const ps = await db.collection(`lobbies/${d.id}/players`).get();
-      for (const p of ps.docs) await db.doc(`lobbies/${d.id}/players/${p.id}`).delete();
-      await db.doc("lobbies/" + d.id).delete();
-      await db.doc("directory/" + d.id).delete();
+      await closeLobby(d.id);
     }
   } catch {}
+}
+/* Lobby codes someone has open right now, from the presence list; null until that list can be trusted. */
+function occupied() {
+  if (!room || !room.connected() || !roomSince || Date.now() - roomSince < 5000) return null;
+  const here = new Set(room.peers().map(p => p.presence && p.presence.lobby).filter(Boolean));
+  if (code) here.add(code);
+  return here;
+}
+/* Once everyone has closed or left a lobby's page, any browser that sees it empty for EMPTY_MS closes it.
+   The wait covers players reloading the page. */
+const emptySince = {};
+let lastHere = null;
+function closeEmptyLobbies() {
+  const here = occupied();
+  if (!here) return;
+  const key = [...here].sort().join();
+  if (!code && key !== lastHere) { lastHere = key; render(); }   // the open-lobby list depends on who is where
+  if (!db || !canWrite) return;
+  const now = Date.now();
+  for (const d of directory) {
+    if (here.has(d.id) || now - (d.updated || 0) < EMPTY_MS) { delete emptySince[d.id]; continue; }
+    emptySince[d.id] ??= now;
+    if (now - emptySince[d.id] < EMPTY_MS) continue;
+    emptySince[d.id] = Infinity;   // one try per page load; the directory snapshot drops it once deleted
+    closeLobby(d.id).catch(() => { delete emptySince[d.id]; });
+  }
 }
 
 /* ---------- player actions (each player only writes their own document) ---------- */
@@ -1494,7 +1547,9 @@ function render() {
 const ICONS = {
   merged: `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.2l2 4.3 4.7.5-3.5 3.2 1 4.6L8 11.4 3.8 13.8l1-4.6L1.3 6l4.7-.5Z" fill="currentColor"/></svg>`,
   wins: `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12 1 4l4 3 3-5 3 5 4-3-1 8Z" fill="currentColor"/><rect x="2" y="13" width="12" height="1.6" fill="currentColor"/></svg>`,
-  judged: `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5Z"/><circle cx="8" cy="8" r="2.2" fill="currentColor"/></svg>`
+  judged: `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5Z"/><circle cx="8" cy="8" r="2.2" fill="currentColor"/></svg>`,
+  trophy: `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2h7v4a3.5 3.5 0 0 1-7 0Z" fill="currentColor"/><path d="M4.5 3.5H2v.8A2.6 2.6 0 0 0 4.7 7M11.5 3.5H14v.8A2.6 2.6 0 0 1 11.3 7M8 9.5v3M5 14h6"/></svg>`,
+  lock: `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>`
 };
 function renderTop() {
   const { lvl, into, need: n } = levelOf(profile.xp), s = profile.stats;
@@ -1502,7 +1557,11 @@ function renderTop() {
     <span class="me-rank">${esc(rankOf(lvl))}<span class="xpbar" title="${into} / ${n} XP to level ${lvl + 1}"><i style="width:${(into / n * 100).toFixed(1)}%"></i></span></span>
     <svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   $("meChip").setAttribute("aria-label", `Your ruler, @${myName || "unnamed ruler"}, level ${lvl}`);
-  if (menuOpen) renderRuler();
+  if (menuOpen === "ruler") renderRuler();
+  const got = ACHIEVEMENTS.filter(a => unlocked(a, s)).length;
+  $("achBtn").innerHTML = `${ICONS.trophy}Achievements<span class="count">${got}/${ACHIEVEMENTS.length}</span>`;
+  $("achBtn").setAttribute("aria-label", `Achievements, ${got} of ${ACHIEVEMENTS.length} unlocked`);
+  if (menuOpen === "ach") renderAchievements();
   $("resBar").innerHTML = [["merged", s.merged, "Rounds won"], ["wins", s.wins, "Victories"], ["judged", s.judged, "Rounds judged"]]
     .map(([k, v, label]) => `<span class="res-item" title="${label}">${ICONS[k]}${v}<small>${label}</small></span>`).join("");
 }
@@ -1520,10 +1579,22 @@ function renderRuler() {
       ${[["Games", s.games], ["Victories", s.wins], ["Win rate", rate], ["Rounds won", s.merged], ["Rounds judged", s.judged], ["Cards played", s.cards]]
         .map(([k, v]) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`).join("")}
     </dl>
-    <div class="field"><span class="eyebrow">Traits · ${TRAITS.filter(t => t.ok(s)).length} of ${TRAITS.length}</span>
-      <div class="traits">${TRAITS.map(t => `<span class="trait ${t.ok(s) ? "" : "locked"}" title="${esc(t.desc)}">${esc(t.name)}</span>`).join("")}</div></div>
     <p class="hint">XP per round: ${XP.round} for playing, ${XP.merged} when your card wins, ${XP.judged} for judging as czar. Finishing a game adds ${XP.game}, winning it ${XP.victory}.${uid ? "" : " Your progress is saved in this browser only."}</p>
     <div class="menu-actions"><button class="btn small primary" type="button" data-act="open-profile">Edit portrait and name</button></div>`;
+}
+
+function renderAchievements() {
+  const s = profile.stats, got = ACHIEVEMENTS.filter(a => unlocked(a, s)).length;
+  $("achMenu").innerHTML = `
+    <div class="ach-head"><h2 class="ptitle">Achievements<span>${got} of ${ACHIEVEMENTS.length}</span></h2>
+      <div class="xpbar"><i style="width:${(got / ACHIEVEMENTS.length * 100).toFixed(1)}%"></i></div></div>
+    <ul class="achs">${ACHIEVEMENTS.map(a => {
+      const done = unlocked(a, s), n = Math.min(a.have(s), a.goal);
+      return `<li class="ach ${done ? "done" : ""}"><span class="ach-badge">${done ? ICONS.trophy : ICONS.lock}</span>
+        <span class="ach-name">${esc(a.name)}</span><span class="ach-desc">${esc(a.desc)}</span>
+        <span class="ach-prog"><span class="xpbar"><i style="width:${(n / a.goal * 100).toFixed(1)}%"></i></span>${done ? "Unlocked" : `${n} / ${a.goal}`}</span></li>`;
+    }).join("")}</ul>
+    <p class="hint">Achievements unlock as you play.${uid ? "" : " Your progress is saved in this browser only."}</p>`;
 }
 
 function renderStandings() {
@@ -1592,9 +1663,10 @@ function renderHome() {
   renderStandings();
   const off = !db || !canWrite;
   $("createBtn").disabled = $("joinBtn").disabled = off;
-  const now = Date.now();
-  /* lobbies still waiting for players come first */
-  const rows = directory.filter(d => /^[A-Z]{4}$/.test(d.id) && d.count > 0 && !d.private && now - (d.updated || 0) < STALE_MS)
+  const now = Date.now(), here = occupied();
+  /* lobbies still waiting for players come first; ones nobody has open are hidden while they wait to be closed */
+  const rows = directory.filter(d => /^[A-Z]{4}$/.test(d.id) && d.count > 0 && !d.private && now - (d.updated || 0) < STALE_MS
+      && (!here || here.has(d.id) || now - (d.updated || 0) < EMPTY_MS))
     .sort((a, b) => (b.status === "lobby") - (a.status === "lobby"));
   $("lobbyCount").hidden = !db || !rows.length;
   $("lobbyCount").textContent = `${rows.length} open`;
@@ -1853,18 +1925,19 @@ async function copyCode() {
   try { await navigator.clipboard.writeText(code); m.textContent = "Copied."; }
   catch { m.textContent = "Select the code above to copy it."; const r = document.createRange(); r.selectNodeContents($("lobbyCode")); getSelection().removeAllRanges(); getSelection().addRange(r); }
 }
-/* Profile dropdown under the top-right chip */
-let menuOpen = false;
-function setMenu(open) {
-  menuOpen = open && !draft;
-  $("rulerCard").hidden = !menuOpen;
-  $("meChip").setAttribute("aria-expanded", menuOpen);
-  if (menuOpen) renderRuler();
+/* Top-bar dropdowns: the ruler dossier under the profile chip and the achievements list. One is open at a time. */
+let menuOpen = null;
+const MENUS = { ruler: ["meChip", "rulerCard"], ach: ["achBtn", "achMenu"] };
+function setMenu(which) {
+  menuOpen = which && !(which === "ruler" && draft) ? which : null;
+  for (const [k, [btn, box]] of Object.entries(MENUS)) { $(box).hidden = menuOpen !== k; $(btn).setAttribute("aria-expanded", menuOpen === k); }
+  if (menuOpen === "ruler") renderRuler();
+  if (menuOpen === "ach") renderAchievements();
 }
-document.addEventListener("keydown", e => { if (e.key === "Escape" && menuOpen) { setMenu(false); $("meChip").focus(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && menuOpen) { const btn = MENUS[menuOpen][0]; setMenu(null); $(btn).focus(); } });
 document.addEventListener("click", e => {
   const t = e.target;
-  if (menuOpen && !t.closest(".me-wrap")) setMenu(false);
+  if (menuOpen && !t.closest(menuOpen === "ruler" ? ".me-wrap" : ".ach-wrap")) setMenu(null);
   const h = t.closest("[data-hand]");
   if (h && !h.disabled && L && L.game && L.game.phase === "pick") { toggleCard(+h.dataset.hand); return render(); }
   const s = t.closest("[data-sub]");
@@ -1900,8 +1973,9 @@ document.addEventListener("click", e => {
   const a = t.closest("[data-act]");
   if (!a || a.disabled) return;
   const act = a.dataset.act;
-  if (act === "toggle-menu") setMenu(!menuOpen);
-  else if (act === "open-profile") { setMenu(false); openProfile(); }
+  if (act === "toggle-menu") setMenu(menuOpen === "ruler" ? null : "ruler");
+  else if (act === "toggle-ach") setMenu(menuOpen === "ach" ? null : "ach");
+  else if (act === "open-profile") { setMenu(null); openProfile(); }
   else if (act === "pf-save" && draft) saveRuler();
   else if (act === "pf-cancel") { draft = null; render(); }
   else if (act === "pf-random" && draft) { draft.face = seedFace(rid(6)); draft.img = null; renderProfile(); }
@@ -2037,7 +2111,7 @@ async function boot() {
     directory = s.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     if (!code) render();
   }, dbErr);
-  setInterval(tick, 1000);
+  setInterval(() => { tick(); closeEmptyLobbies(); }, 1000);
 
   /* come back to the lobby this browser was in before a reload */
   const saved = tab.get("cah-lobby", null);
