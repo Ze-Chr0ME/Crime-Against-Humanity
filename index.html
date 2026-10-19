@@ -438,6 +438,11 @@ button.card:disabled { cursor: default; opacity: .55; }
 .sub.reading { border-style: dashed; border-color: var(--muted); }
 .sub.chosen, .sub.winner { border-color: var(--signal-edge); background: var(--signal-soft); }
 .sub .card.white { aspect-ratio: auto; min-height: 120px; }
+/* Face-down submissions while the czar reveals them one at a time */
+.sub .card.back { justify-content: flex-start; font-weight: 800; font-size: 19px; line-height: 1.05; }
+.sub.down.can-pick:hover .card.back { transform: translateY(-4px) rotate(-1deg); box-shadow: inset 0 0 0 1px rgba(12, 12, 14, .1), var(--shadow-lift); }
+.sub.down .card.back { transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .18s; }
+.sub.flipping .card.white { animation: reveal .6s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: var(--since, 0ms); }
 .sub-by { font-size: 13.5px; font-weight: 600; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 2px 2px 0; }
 
 /* Toasts, stacked bottom-right */
@@ -458,6 +463,7 @@ button.card:disabled { cursor: default; opacity: .55; }
 .toast.big b { font-family: var(--display); font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
 
 @keyframes deal { from { opacity: 0; transform: translateY(18px) rotate(-3deg); } }
+@keyframes reveal { from { transform: perspective(900px) rotateY(90deg); } }
 @keyframes flip { from { opacity: 0; transform: perspective(900px) rotateY(-28deg) translateX(-14px); } }
 @keyframes drop { from { opacity: 0; transform: translateY(-12px) rotate(5deg); } }
 @keyframes blink { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "…"; } }
@@ -825,7 +831,7 @@ let seenLobby = false, seenSelf = false, leaving = false;
 let unsubLobby = null, unsubPlayers = null;
 let view = "home";            // home | packs, while not in a lobby
 let editingPack = null, armedDelete = null;
-let selected = [], czarPick = null, lastKey = "", lastOnline = "";
+let selected = [], czarPick = null, lastKey = "", lastOnline = "", flipSeen = { key: "", at: {} };
 const offlineSince = {};
 
 /* ---------- ruler portraits ---------- */
@@ -1270,8 +1276,25 @@ async function submitCards() {
 }
 async function awardPick() {
   const g = L.game;
-  if (!g || g.phase !== "judge" || g.czar !== ME || czarPick == null) return;
+  if (!g || g.phase !== "judge" || g.czar !== ME || czarPick == null || revealedOf(g).length < g.order.length) return;
   try { await myRef().update({ pick: { gid: g.gid, round: g.round, k: czarPick } }); } catch (e) { writeError(e); }
+}
+/* The czar flips submissions face up one at a time; the list lives on the czar's own seat so every table sees it. */
+let myReveal = { key: "", ks: [] };
+function revealedOf(g) {
+  const key = g.gid + ":" + g.round, r = P[g.czar] && P[g.czar].reveal;
+  const ks = r && r.gid === g.gid && r.round === g.round && Array.isArray(r.ks) ? r.ks.slice() : [];
+  if (g.czar === ME && myReveal.key === key) for (const k of myReveal.ks) if (!ks.includes(k)) ks.push(k);
+  return ks.filter(k => Number.isInteger(k) && k >= 0 && k < g.order.length);
+}
+async function revealSub(k) {
+  const g = L.game;
+  if (!g || g.phase !== "judge" || g.czar !== ME) return;
+  const ks = revealedOf(g);
+  if (ks.includes(k)) return;
+  ks.push(k);
+  myReveal = { key: g.gid + ":" + g.round, ks };
+  try { await myRef().update({ reveal: { gid: g.gid, round: g.round, ks } }); } catch (e) { writeError(e); }
 }
 async function rename(e) {
   e.preventDefault();
@@ -1788,11 +1811,20 @@ function renderGame() {
     const look = peer && peer.presence.look;
     if (look && look.gid === g.gid && look.round === g.round && Number.isInteger(look.k)) reading = look.k;
   }
+  /* which submissions the czar has flipped face up, and when each flip reached this table */
+  const shown = phase === "judge" ? revealedOf(g) : g.order.map((_, k) => k);
+  if (phase === "judge" && !shown.includes(reading)) reading = shown[shown.length - 1] ?? -1;
+  const flipKey = g.gid + ":" + g.round;
+  if (flipSeen.key !== flipKey) flipSeen = { key: flipKey, at: {} };
+  for (const k of shown) flipSeen.at[k] ??= phase === "judge" ? Date.now() : 0;
 
   /* black card, previewing whatever is being considered */
   let fill = null;
   if (phase === "pick" && !iAmCzar && seated) fill = mySub || selected.map(i => hand[i]);
-  else if (phase === "judge") fill = iAmCzar ? (czarPick != null && g.order[czarPick] ? g.order[czarPick].cards : null) : (g.order[reading] ? g.order[reading].cards : null);
+  else if (phase === "judge") {
+    const k = iAmCzar && shown.includes(czarPick) ? czarPick : reading;
+    fill = g.order[k] ? g.order[k].cards : null;
+  }
   else if (phase === "result" || phase === "over") { const w = g.order.find(s => s.pid === g.winner); fill = w ? w.cards : null; }
   $("stage").classList.toggle("fresh", fresh && phase === "pick");
   $("blackCard").innerHTML = blackCard(g.black, fill);
@@ -1807,7 +1839,9 @@ function renderGame() {
     else if (!mySub) status = `Pick ${n === 1 ? "a card" : `${n} cards, in order,`} to complete the prompt. ${at(czar)} is judging this round.`;
     else status = waiting.length ? `Submitted. Waiting on ${waiting.map(at).join(", ")}.` : `Submitted. Shuffling the submissions<span class="dots"></span>`;
   } else if (phase === "judge") {
-    status = iAmCzar ? `All submissions are in. Read each one against the prompt and pick the funniest.` : `${at(czar)} is reviewing the submissions<span class="dots"></span>`;
+    const left = g.order.length - shown.length;
+    if (iAmCzar) status = left ? `All submissions are in. Flip them over one at a time; everyone sees each card as you reveal it.` : `Every card is face up. Pick the funniest.`;
+    else status = left ? `${at(czar)} is revealing the submissions, ${shown.length} of ${g.order.length} so far<span class="dots"></span>` : `${at(czar)} is choosing a winner<span class="dots"></span>`;
   } else if (phase === "result") {
     const w = g.winner, to = w === ME ? "you" : at(w);
     const next = cfg.rounds && g.round >= cfg.rounds ? " That was the last round." : cfg.next ? " Next round starts in a few seconds."
@@ -1891,21 +1925,29 @@ function renderGame() {
     title = "Submissions";
     const canPick = phase === "judge" && iAmCzar;
     const awarded = canPick && P[ME] && P[ME].pick && P[ME].pick.gid === g.gid && P[ME].pick.round === g.round;
-    if (canPick) hint = awarded ? "Point awarded. Waiting for the host to record it." : "Tap a submission to preview it, then award the point.";
-    else if (phase === "judge") hint = "Submissions stay anonymous until the czar decides.";
+    const hidden = g.order.length - shown.length;
+    if (canPick) hint = awarded ? "Point awarded. Waiting for the host to record it."
+      : hidden ? `Tap a face-down card to reveal it to the table. ${plural(hidden, "card", "cards")} left.` : "Tap a submission to preview it, then award the point.";
+    else if (phase === "judge") hint = hidden ? "The czar flips the cards over one at a time. Submissions stay anonymous until the czar decides." : "Submissions stay anonymous until the czar decides.";
     else hint = "Here is who played what.";
     tray.className = "subs";
     tray.innerHTML = g.order.map((s, k) => {
+      const up = shown.includes(k), since = Date.now() - (flipSeen.at[k] || 0);
       const cls = [canPick ? "can-pick" : "", canPick && czarPick === k ? "chosen" : "",
         phase === "judge" && !iAmCzar && reading === k ? "reading" : "",
+        up ? "" : "down", up && since < 600 ? "flipping" : "",
         phase !== "judge" && s.pid === g.winner ? "winner" : ""].join(" ");
       const by = phase === "judge" ? "" : `<span class="sub-by">${avHTML(lookOf(s.pid), "sm")}@${esc(nameOf(s.pid))}${s.pid === ME ? " (you)" : ""}${s.pid === g.winner ? ` <span class="chip won">won</span>` : ""}${s.auto ? ` <span class="chip">played by the timer</span>` : ""}</span>`;
-      const inner = s.cards.map((c, j) => whiteCard(c, { tag: "span", i: k * 2 + j })).join("") + by;
+      const inner = up
+        ? s.cards.map((c, j) => whiteCard(c, { tag: "span", i: k * 2 + j })).join("") + by
+        : s.cards.map(() => `<span class="card white back"><span class="card-text">Crimes<br>Against<br>Humanity.</span></span>`).join("");
+      const style = since < 600 ? ` style="--since:-${since}ms"` : "";
+      const label = up ? "" : ` aria-label="Face-down submission ${k + 1}${canPick ? ", tap to reveal" : ""}"`;
       return canPick
-        ? `<button type="button" class="sub ${cls}" data-sub="${k}" aria-pressed="${czarPick === k}">${inner}</button>`
-        : `<div class="sub ${cls}">${inner}</div>`;
+        ? `<button type="button" class="sub ${cls}"${style}${label} data-sub="${k}" aria-pressed="${czarPick === k}">${inner}</button>`
+        : `<div class="sub ${cls}"${style}${label}>${inner}</div>`;
     }).join("");
-    if (canPick) action = `<button class="btn gold" type="button" data-act="award" ${czarPick != null && !awarded ? "" : "disabled"}>Award the point</button>`;
+    if (canPick) action = `<button class="btn gold" type="button" data-act="award" ${czarPick != null && !hidden && !awarded ? "" : "disabled"}>Award the point</button>`;
     if (phase === "result" && host) action = `<button class="btn primary" type="button" data-act="next">Next round</button>`;
     if (phase === "over") action = host ? `<button class="btn primary" type="button" data-act="again">Back to lobby</button>` : `<span class="hint">Waiting for the host to start another game.</span>`;
   }
@@ -1942,7 +1984,8 @@ document.addEventListener("click", e => {
   if (h && !h.disabled && L && L.game && L.game.phase === "pick") { toggleCard(+h.dataset.hand); return render(); }
   const s = t.closest("[data-sub]");
   if (s && L && L.game && L.game.phase === "judge" && L.game.czar === ME) {
-    czarPick = +s.dataset.sub; setPresence({ look: { gid: L.game.gid, round: L.game.round, k: czarPick } }); return render();
+    czarPick = +s.dataset.sub; setPresence({ look: { gid: L.game.gid, round: L.game.round, k: czarPick } });
+    revealSub(czarPick); return render();
   }
   const j = t.closest("[data-join]");
   if (j && !j.disabled) return joinLobby(j.dataset.join);
