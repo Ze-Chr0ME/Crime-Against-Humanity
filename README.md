@@ -1,6 +1,6 @@
 # Crimes Against Humanity
 
-A multiplayer party game that plays Cards Against Humanity with all 71 official card packs, wrapped in a sci-fi interface.
+A multiplayer party game that plays Cards Against Humanity with all 71 official card packs plus 11 unofficial NSFW packs, wrapped in a sci-fi interface.
 It is a single `index.html` published as a claude.ai Artifact. The page uses the Artifact's shared database for lobbies, players and card packs, and its live room to see who is still connected.
 
 ## Play
@@ -90,5 +90,7 @@ Use **Manage card packs** on the home screen to create, edit, copy or delete pac
 ## Credits and licence
 
 The official card text is from [JSON Against Humanity](https://github.com/crhallberg/json-against-humanity) by Chris Hallberg, which collects the Cards Against Humanity cards (partly from Pretend You're Xyzzy). Cards Against Humanity LLC releases the cards under the [Creative Commons BY-NC-SA](https://creativecommons.org/licenses/by-nc-sa/4.0/) licence. Line breaks were joined, blanks were rewritten as `____`, and 5 cards longer than 150 characters were left out.
+
+The **Unofficial / NSFW** group holds third-party packs from the same collection: Crabs Adjust Humidity, Cats Abiding Horribly, Cocks Abreast Hostility, Words Against Morality, Pigs Against Profanity, Evil Apples, Guards Against Insanity, Depravity, Hilarious!, Skewered And Roasted and Personally Incorrect. Each game's volumes are merged into one pack, duplicates were removed, and so were cards over 150 characters or with more than 3 blanks. These packs are off by default. In Personally Incorrect prompts, `"Insert Name"` became `[player]`, which is filled with a random player's name when the prompt is dealt.
 
 Under that licence this game is non-commercial and is shared under the same terms. It is not affiliated with or endorsed by Cards Against Humanity LLC.
