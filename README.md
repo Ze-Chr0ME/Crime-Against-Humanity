@@ -35,7 +35,22 @@ Each player has a ruler profile, saved per claude.ai account in `profiles/<accou
 
 Settings are locked while a game is running; the host can end the game to change them.
 
-Opening `index.html` directly or through GitHub Pages only shows a notice, because the multiplayer backend exists only on claude.ai.
+## Playing on GitHub Pages (Firebase backend)
+
+Outside claude.ai the page uses a free Firebase project instead (Spark plan, no card needed): Firestore holds lobbies, packs and profiles, the Realtime Database tracks who is connected, and each browser signs in anonymously. Players don't need any account.
+
+One-time setup:
+
+1. Go to <https://console.firebase.google.com>, **Create a project** (Google Analytics can be off). It stays on the free Spark plan.
+2. **Build > Authentication > Get started**, then under **Sign-in method** enable **Anonymous**. Under **Settings > Authorized domains**, add `ze-chr0me.github.io`.
+3. **Build > Firestore Database > Create database**, pick a location, start in **production mode**. Open the **Rules** tab, paste [`firestore.rules`](firestore.rules) and **Publish**.
+4. **Build > Realtime Database > Create database**, start in **locked mode**. Open **Rules**, paste [`database.rules.json`](database.rules.json) and **Publish**.
+5. **Project settings** (gear icon) **> General > Your apps > Web (`</>`)**, register an app (no Hosting), and copy the `firebaseConfig` object. Make sure it includes `databaseURL`; if not, copy the URL from the Realtime Database page.
+6. Paste that object as the value of `FIREBASE` in `index.html` (search for `const FIREBASE`) and push to `main`.
+
+The config values are public identifiers, not secrets; the rules files decide what browsers may do. On claude.ai the page keeps using the artifact's own storage, and the Firebase code is never loaded.
+
+Free-plan limits (per day: 50,000 Firestore reads, 20,000 writes; 100 simultaneous Realtime Database connections) cover many games a day. Progress on GitHub Pages is per browser, because sign-in is anonymous.
 
 ## Rules
 

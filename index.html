@@ -1268,7 +1268,9 @@ function notice(msg, { error = false, sticky = false } = {}) {
 }
 function writeError(e) {
   if (e && e.code === "invalid_argument") notice("You can view this game but can't save to it. Ask the person who shared it to give you edit access.", { error: true, sticky: true });
+  else if (e && e.code === "permission-denied") notice("The game server refused that change. Reload the page and try again.", { error: true });
   else if (e && e.code === "quota_exceeded") notice("The game's storage is full. Delete some card packs and try again.", { error: true });
+  else if (e && e.code === "resource-exhausted") notice("The game server hit its free daily limit. It resets within a day.", { error: true, sticky: true });
   else notice(`That didn't save (${(e && e.code) || "network error"}). Try again.`, { error: true });
 }
 const dbErr = e => { if (e && e.code !== "revoked") writeError(e); };
@@ -2187,15 +2189,65 @@ function starfield() {
 }
 starfield();
 
+/* ---------- Firebase backend (used outside claude.ai, e.g. on GitHub Pages) ---------- */
+/* Paste the web app config from the Firebase console here. These values identify the project; they are not secrets.
+   Access is controlled by the security rules in firestore.rules and database.rules.json. */
+const FIREBASE = {
+  apiKey: "AIzaSyClc6pCnu7hYhCSJ8tAumHe2JZ_UGGYRTc",
+  authDomain: "cardsagainsthumanity-9090e.firebaseapp.com",
+  databaseURL: "https://cardsagainsthumanity-9090e-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "cardsagainsthumanity-9090e",
+  appId: "1:536068500778:web:7adc2efe502d6c43da8253"
+};
+const FB_SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
+const loadScript = src => new Promise((ok, no) => {
+  const s = document.createElement("script");
+  s.src = src; s.onload = ok; s.onerror = () => no(new Error("Couldn't load " + src));
+  document.head.append(s);
+});
+/* Returns the same three capabilities claude.ai provides: Firestore stands in for db (same call shapes),
+   the Realtime Database's presence list stands in for room, and an anonymous sign-in gives each browser its id. */
+async function firebaseBackend() {
+  for (const m of ["app", "auth", "firestore", "database"]) await loadScript(`${FB_SDK}firebase-${m}-compat.js`);
+  firebase.initializeApp(FIREBASE);
+  const { user: who } = await firebase.auth().signInAnonymously();
+  const rtdb = firebase.database(), mine = rtdb.ref("presence/" + rid(12));
+  let peers = [], connected = false, last = null;
+  const peerFns = [], connFns = [];
+  rtdb.ref(".info/connected").on("value", s => {
+    connected = !!s.val();
+    if (connected) { mine.onDisconnect().remove(); if (last) mine.set(last); }
+    connFns.forEach(f => f(connected));
+  });
+  rtdb.ref("presence").on("value", s => {
+    peers = Object.entries(s.val() || {}).filter(([k]) => k !== mine.key).map(([, presence]) => ({ presence }));
+    peerFns.forEach(f => f(peers));
+  });
+  const room = {
+    presence: p => { last = JSON.parse(JSON.stringify({ ...p, uid: who.uid, t: Date.now() })); return mine.set(last); },
+    peers: () => peers,
+    connected: () => connected,
+    onConnection: fn => { connFns.push(fn); fn(connected); return () => {}; },
+    onPeers: fn => { peerFns.push(fn); fn(peers); return () => {}; }
+  };
+  const user = { can: async () => true, id: async () => who.uid };
+  return [firebase.firestore(), room, user];
+}
+
 /* ---------- boot ---------- */
 async function boot() {
   $("nameInput").value = myName;
   render();
   const use = name => window.claude && window.claude.use ? window.claude.use(name).catch(() => null) : Promise.resolve(null);
-  const [d, r, u] = await Promise.all([use("db"), use("room"), use("user")]);
+  let [d, r, u] = await Promise.all([use("db"), use("room"), use("user")]);
+  if (!d && FIREBASE) {
+    notice("Connecting to the game server…", { sticky: true });
+    try { [d, r, u] = await firebaseBackend(); notice(""); }
+    catch (e) { console.error(e); notice("Couldn't reach the game server. Check your connection and reload the page.", { error: true, sticky: true }); return render(); }
+  }
   db = d;
   if (!db) {
-    notice("This game is multiplayer only. Open it from its claude.ai link while signed in to play.", { error: true, sticky: true });
+    notice("This copy of the game has no game server set up, so it can't host lobbies. Play the published version on claude.ai instead.", { error: true, sticky: true });
     return render();
   }
   if (u && (await u.can("data.write")) === false) {

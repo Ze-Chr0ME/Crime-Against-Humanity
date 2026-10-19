@@ -1,0 +1,37 @@
+rules_version = '2';
+// Firestore rules for the GitHub Pages copy of Commits Against Humanity.
+// Paste into Firebase console > Firestore Database > Rules, then Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    // Rulers: everyone reads the standings, each browser writes only its own profile.
+    match /profiles/{uid} {
+      allow read: if true;
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Lobbies: the host's browser writes the lobby, each player writes their own seat
+    // (the host may also remove seats), so any signed-in browser may write here.
+    match /lobbies/{code} {
+      allow read: if signedIn();
+      allow write: if signedIn() && code.matches('^[A-Z]{4}$');
+      match /players/{pid} {
+        allow read: if signedIn();
+        allow write: if signedIn() && pid.matches('^p[a-z0-9]{12}$');
+      }
+    }
+
+    // Open-lobby list shown on the home screen.
+    match /directory/{code} {
+      allow read: if signedIn();
+      allow write: if signedIn() && code.matches('^[A-Z]{4}$');
+    }
+
+    // Card packs written by players.
+    match /packs/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn() && id.matches('^k[a-z0-9]{10}$');
+    }
+  }
+}

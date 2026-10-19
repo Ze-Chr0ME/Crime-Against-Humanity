@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "presence": {
+      ".read": "auth != null",
+      "$key": {
+        ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid)",
+        ".validate": "newData.child('uid').val() === auth.uid && newData.hasChild('pid')"
+      }
+    }
+  }
+}
