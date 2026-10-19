@@ -1,6 +1,6 @@
-# Commits Against Humanity
+# Crimes Against Humanity
 
-A multiplayer party game in the style of Cards Against Humanity, with developer and version-control themed cards.
+A multiplayer party game that plays Cards Against Humanity with all 71 official card packs, wrapped in a sci-fi interface.
 It is a single `index.html` published as a claude.ai Artifact. The page uses the Artifact's shared database for lobbies, players and card packs, and its live room to see who is still connected.
 
 ## Play
@@ -14,7 +14,7 @@ It is a single `index.html` published as a claude.ai Artifact. The page uses the
 Each player has a ruler profile, saved per claude.ai account in `profiles/<account id>` (only you can write yours; everyone can read the standings).
 
 - **Portrait**: pick one of 10 species (Mammalian, Reptilian, Avian, Arthropoid, Molluscoid, Fungoid, Lithoid, Machine, Plantoid, Humanoid) and colour the skin, eyes, uniform and backdrop, or upload a picture. Uploads are cropped to a 128 px square JPEG before saving.
-- **XP** per round: 10 for playing, 50 when your commit is merged, 15 for judging as czar. Finishing a game adds 40 and winning it 150. Each player's own browser credits them once per round and once per game.
+- **XP** per round: 10 for playing, 50 when your card wins the round, 15 for judging as czar. Finishing a game adds 40 and winning it 150. Each player's own browser credits them once per round and once per game.
 - **Levels and ranks**: level *n* needs 100 + 50 × (*n* − 1) more XP. Ranks go Cadet, Ensign, Lieutenant, Commander, Captain, Commodore, Admiral, Grand Admiral, Galactic Custodian and Galactic Emperor (level 40).
 - **Traits** unlock from your stats: First Contact, Silver-Tongued, Arbiter, Prolific, Lucky, Federation Builder, Hegemon, Galactic Veteran.
 - **Galactic standings** on the home screen list the top 10 rulers by XP.
@@ -68,17 +68,18 @@ Free-plan limits (per day: 50,000 Firestore reads, 20,000 writes; 100 simultaneo
 
 ## Card packs
 
-The host picks packs in the lobby. They're grouped, and each group has **All** / **None** buttons:
+The host picks packs in the lobby. They are grouped, and each group has **All** / **None** buttons:
 
 | Group | Packs |
 | --- | --- |
-| Base game | Commits Against Humanity (on by default) |
-| Expansions | Cloud Bill Shock, Frontend Fatigue, AI Hype Cycle, Gamer Moment |
-| Community picks | Sysadmin Sorrows, Data Science Lies, Startup Pitch Deck, Retro Computing, Corporate Feed |
-| Trash tier | Internet Meme Pack, Brainrot, Boomer Feed, Dad Jokes, Cursed, Literally Just Bad Cards |
+| Base game | CAH Base Set (on by default) |
+| Expansions | First to Sixth Expansion, the Red, Blue, Green and Absurd boxes, Box Expansion, Main Deck, Human, Ass and A.I. packs, Procedurally-Generated Cards |
+| Themed packs | 23 small packs (90s and 2000s Nostalgia, Fantasy, Sci-Fi, Science, Food, Weed, Period, Dad, Pride, College, Theatre, Reject packs and others) |
+| Other editions | UK and Canadian conversion kits, Family Edition (public beta) |
+| Promos and specials | 28 holiday, convention (PAX, Gen Con), election and retail packs |
 | Made by players | Every pack in the game's shared library |
 
-Cards that appear in more than one selected pack are dealt only once. The bundled packs are in `BUILTIN_PACKS` near the top of the `<script>` in `index.html`; `kind` sets the group they're listed under.
+Cards that appear in more than one selected pack are dealt only once. If the selected packs are too big for one lobby document, the deck is trimmed at random before the game starts. The bundled packs are `BUILTIN_PACKS` near the top of the `<script>` in `index.html`, and `kind` sets the group they're listed under.
 
 Use **Manage card packs** on the home screen to create, edit, copy or delete packs. Packs are shared with everyone who plays this game; only the person who made a pack can edit or delete it, from the same browser.
 
@@ -86,6 +87,8 @@ Use **Manage card packs** on the home screen to create, edit, copy or delete pac
 - Write `____` (or any run of 3+ underscores) for each blank in a black card, up to 3 blanks. A black card with no blank is a question answered with one card.
 - Up to 400 cards of each colour per pack, 150 characters per card.
 
-The base deck is the `BLACK` and `WHITE` arrays at the top of the `<script>` in `index.html`.
+## Credits and licence
 
-Not affiliated with Cards Against Humanity LLC. All card text here is original.
+The official card text is from [JSON Against Humanity](https://github.com/crhallberg/json-against-humanity) by Chris Hallberg, which collects the Cards Against Humanity cards (partly from Pretend You're Xyzzy). Cards Against Humanity LLC releases the cards under the [Creative Commons BY-NC-SA](https://creativecommons.org/licenses/by-nc-sa/4.0/) licence. Line breaks were joined, blanks were rewritten as `____`, and 5 cards longer than 150 characters were left out.
+
+Under that licence this game is non-commercial and is shared under the same terms. It is not affiliated with or endorsed by Cards Against Humanity LLC.
