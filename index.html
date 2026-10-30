@@ -854,7 +854,9 @@ const BUILTIN_PACKS = [
 const MIN_PLAYERS = 3, MAX_PLAYERS = 10;
 const GONE_MS = 20000;            // a player missing from the room this long is skipped
 /* Lobby settings: the host picks from these; seconds are 0 for "no timer" / "host decides". */
-const DEFAULTS = { target: 5, rounds: 0, pickTime: 0, judgeTime: 0, hand: 7, next: 9, maxPlayers: 10, private: false, packs: ["builtin"] };
+const DEFAULTS = { target: 5, rounds: 0, pickTime: 0, judgeTime: 0, hand: 7, next: 9, maxPlayers: 10, private: false, packs: ["builtin"], lang: "en" };
+/* Card text languages. Translations of the official packs load from i18n/ the first time a lobby picks one. */
+const LANGS = { en: "English", de: "Deutsch", fr: "Français" };
 const SETTINGS = [
   { key: "target", label: "Points to win", options: [3, 5, 7, 10, 15], fmt: n => `${n} points` },
   { key: "rounds", label: "Round limit", options: [0, 5, 10, 15, 20, 30], fmt: n => n ? `${n} rounds` : "No limit" },
@@ -862,7 +864,8 @@ const SETTINGS = [
   { key: "judgeTime", label: "Time for the czar", options: [0, 30, 60, 90], fmt: n => n ? `${n} seconds` : "No timer" },
   { key: "hand", label: "Cards in hand", options: [5, 7, 10], fmt: n => `${n} cards` },
   { key: "next", label: "Next round starts", options: [5, 9, 15, 0], fmt: n => n ? `After ${n} seconds` : "When the host clicks" },
-  { key: "maxPlayers", label: "Max players", options: [4, 6, 8, 10], fmt: n => `${n} players` }
+  { key: "maxPlayers", label: "Max players", options: [4, 6, 8, 10], fmt: n => `${n} players` },
+  { key: "lang", label: "Card language", options: Object.keys(LANGS), fmt: l => LANGS[l] || l }
 ];
 const settings = () => ({ ...DEFAULTS, ...(L && L.settings) });
 const STALE_MS = 3 * 3600e3;      // open-lobby list hides lobbies idle longer than this
@@ -1157,13 +1160,24 @@ function deckCounts(ids) {
   b.delete(""); w.delete("");
   return { black: b.size, white: w.size };
 }
-function buildDeck(ids) {
+/* lang -> "loading" | "failed" | { packId: { black, white } }, index-aligned with BUILTIN_PACKS; null keeps the English card */
+const tr = {};
+function loadLang(lang) {
+  if (!LANGS[lang] || lang === "en" || tr[lang]) return;
+  tr[lang] = "loading";
+  fetch(`i18n/cards.${lang}.json`).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(d => { tr[lang] = d; }, () => { tr[lang] = "failed"; })
+    .then(() => { if (L && L.status === "lobby") render(); });
+}
+function buildDeck(ids, lang) {
   let white = [], black = [];
+  const t = lang && typeof tr[lang] === "object" ? tr[lang] : {};
+  const text = (p, k) => t[p.id] ? p[k].map((c, i) => t[p.id][k][i] ?? c) : p[k];
   for (const id of ids) {
     const p = packById(id);
     if (!p) continue;
-    white.push(...p.white.map(cleanCard).filter(Boolean));
-    black.push(...p.black.map(cleanCard).filter(Boolean));
+    white.push(...text(p, "white").map(cleanCard).filter(Boolean));
+    black.push(...text(p, "black").map(cleanCard).filter(Boolean));
   }
   white = shuffle(uniq(white)); black = shuffle(uniq(black));
   /* keep the lobby document well under the store's 256 KiB limit */
@@ -1524,8 +1538,13 @@ function scheduleNext(g) {
 }
 function startCheck() {
   const players = Object.keys(P).filter(present), s = settings();
-  const deck = buildDeck(s.packs || []), want = players.length * (s.hand + 1);
+  const deck = buildDeck(s.packs || [], s.lang), want = players.length * (s.hand + 1);
   if (players.length < MIN_PLAYERS) return { ok: false, why: `Waiting for players: ${players.length} of ${MIN_PLAYERS} needed.` };
+  if (s.lang && s.lang !== "en") {
+    loadLang(s.lang);
+    if (tr[s.lang] === "loading") return { ok: false, why: `Loading the ${LANGS[s.lang]} cards…` };
+    if (tr[s.lang] === "failed") return { ok: false, why: `Couldn't load the ${LANGS[s.lang]} cards. Reload the page or pick English.` };
+  }
   if (!deck.black.length) return { ok: false, why: "The selected packs have no black cards." };
   if (deck.white.length < want) return { ok: false, why: `The selected packs need at least ${want} white cards for ${players.length} players with ${s.hand}-card hands.` };
   return { ok: true, deck };
@@ -1853,6 +1872,7 @@ function renderLobby() {
     <div class="settings-grid">${SETTINGS.map(o => `<div class="field"><label for="set-${o.key}">${o.label}</label>
       <select id="set-${o.key}" data-setting="${o.key}" ${off}>${uniq(o.options.concat(s[o.key])).map(n => `<option value="${n}" ${s[o.key] === n ? "selected" : ""}>${o.fmt(n)}</option>`).join("")}</select></div>`).join("")}</div>
     <p class="hint">${settingsNote(s)}</p>
+    ${s.lang && s.lang !== "en" ? `<p class="hint">Official packs are dealt in ${LANGS[s.lang]}. Unofficial and player-made packs stay in English, and so do 20 official cards that were left untranslated.</p>` : ""}
     <label class="check ${host ? "" : "disabled"}"><input type="checkbox" id="set-private" data-setting="private" ${s.private ? "checked" : ""} ${off}>
       <span class="row-main"><span class="row-title">Private lobby</span><span class="row-sub">Hidden from open lobbies. Friends join with the code.</span></span></label>
     <div class="pack-summary"><span class="eyebrow">Card packs in this game</span>
@@ -2171,7 +2191,7 @@ document.addEventListener("click", e => {
 document.addEventListener("change", e => {
   if (!isHost() || L.status !== "lobby") return;
   const key = e.target.dataset.setting;
-  if (key) { L.settings = { ...settings(), [key]: key === "private" ? e.target.checked : +e.target.value }; commit(); }
+  if (key) { L.settings = { ...settings(), [key]: key === "private" ? e.target.checked : key === "lang" ? e.target.value : +e.target.value }; commit(); }
   else if (e.target.dataset.pack) {
     const set = new Set(settings().packs);
     e.target.checked ? set.add(e.target.dataset.pack) : set.delete(e.target.dataset.pack);
