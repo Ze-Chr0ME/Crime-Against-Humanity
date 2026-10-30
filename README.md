@@ -16,22 +16,24 @@ Each player has a ruler profile, saved per claude.ai account in `profiles/<accou
 - **Portrait**: pick one of 10 species (Mammalian, Reptilian, Avian, Arthropoid, Molluscoid, Fungoid, Lithoid, Machine, Plantoid, Humanoid) and colour the skin, eyes, uniform and backdrop, or upload a picture. Uploads are cropped to a 128 px square JPEG before saving.
 - **XP** per round: 10 for playing, 50 when your card wins the round, 15 for judging as czar. Finishing a game adds 40 and winning it 150. Each player's own browser credits them once per round and once per game.
 - **Levels and ranks**: level *n* needs 100 + 50 × (*n* − 1) more XP. Ranks go Cadet, Ensign, Lieutenant, Commander, Captain, Commodore, Admiral, Grand Admiral, Galactic Custodian and Galactic Emperor (level 40).
-- **Traits** unlock from your stats: First Contact, Silver-Tongued, Arbiter, Prolific, Lucky, Federation Builder, Hegemon, Galactic Veteran.
 - **Galactic standings** on the home screen list the top 10 rulers by XP.
 
 ## Lobby settings
 
-| Setting | Options | What it does |
+| Setting | Slider (typed limit) | What it does |
 | --- | --- | --- |
-| Points to win | 3, 5, 7, 10, 15 | The first player to reach it wins. |
-| Round limit | none, 5–30 | After the last round, the top score wins (ties share the win). |
-| Time to pick cards | none, 30–120 s | When it runs out, the timer plays random cards for anyone who hasn't picked. |
-| Time for the czar | none, 30–90 s | When it runs out, a random submission wins the round. |
-| Cards in hand | 5, 7, 10 | Hand size for the whole game. |
-| Next round starts | after 5, 9 or 15 s, or when the host clicks | Pause on the round result. |
-| Max players | 4, 6, 8, 10 | New players can't join a full lobby. |
+| Points to win | 1–20 (up to 99) | The first player to reach it wins. |
+| Round limit | 1–30 or none (up to 999) | After the last round, the top score wins (ties share the win). |
+| Time to pick cards | 10–180 s or none (up to 3600 s) | When it runs out, the timer plays random cards for anyone who hasn't picked. |
+| Time for the czar | 10–180 s or none (up to 3600 s) | When it runs out, a random submission wins the round. |
+| Cards in hand | 3–12 (up to 30) | Hand size for the whole game. |
+| Next round starts | 3–30 s or when the host clicks (up to 300 s) | Pause on the round result. |
+| Max players | 3–10 (up to 20) | New players can't join a full lobby. |
 | Private lobby | on / off | Hides the lobby from **Open lobbies**; friends join with the code. |
+| Card language | English, German or French flag | Language of the built-in cards. |
 | Card packs | any packs in the library | Which prompts and answers are shuffled into the deck. |
+
+Each number setting is a slider. Click the number beside it to type a value past the slider's range; leave it empty for none.
 
 Settings are locked while a game is running; the host can end the game to change them.
 
