@@ -607,7 +607,7 @@ button.card:disabled { cursor: default; opacity: .55; }
           <h2 class="ptitle">Card packs</h2>
           <button class="btn small" type="button" data-act="open-packs">Manage card packs</button>
         </div>
-        <p class="hint">All 71 official packs are built in: the base set, every expansion and box, themed packs and promos, plus 11 unofficial NSFW packs that are off until the host turns them on. Packs you write are shared with everyone who plays here, and the host picks which packs go into a game.</p>
+        <p class="hint">All 71 official packs are built in: the base set, every expansion and box, themed packs and promos, plus 11 unofficial NSFW packs that are on by default. Packs you write are shared with everyone who plays here, and the host picks which packs go into a game.</p>
       </section>
     </div>
   </div>
@@ -854,7 +854,7 @@ const BUILTIN_PACKS = [
 const MIN_PLAYERS = 3, MAX_PLAYERS = 10;
 const GONE_MS = 20000;            // a player missing from the room this long is skipped
 /* Lobby settings: the host picks from these; seconds are 0 for "no timer" / "host decides". */
-const DEFAULTS = { target: 5, rounds: 0, pickTime: 0, judgeTime: 0, hand: 7, next: 9, maxPlayers: 10, private: false, packs: ["builtin"], lang: "en" };
+const DEFAULTS = { target: 5, rounds: 0, pickTime: 0, judgeTime: 0, hand: 7, next: 9, maxPlayers: 10, private: false, packs: ["builtin", ...BUILTIN_PACKS.filter(p => p.kind === "nsfw").map(p => p.id)], lang: "en" };
 /* Card text languages. Translations of the official packs load from i18n/ the first time a lobby picks one. */
 const LANGS = { en: "English", de: "Deutsch", fr: "Français" };
 const SETTINGS = [
@@ -1872,7 +1872,7 @@ function renderLobby() {
     <div class="settings-grid">${SETTINGS.map(o => `<div class="field"><label for="set-${o.key}">${o.label}</label>
       <select id="set-${o.key}" data-setting="${o.key}" ${off}>${uniq(o.options.concat(s[o.key])).map(n => `<option value="${n}" ${s[o.key] === n ? "selected" : ""}>${o.fmt(n)}</option>`).join("")}</select></div>`).join("")}</div>
     <p class="hint">${settingsNote(s)}</p>
-    ${s.lang && s.lang !== "en" ? `<p class="hint">Official packs are dealt in ${LANGS[s.lang]}. Unofficial and player-made packs stay in English, and so do 20 official cards that were left untranslated.</p>` : ""}
+    ${s.lang && s.lang !== "en" ? `<p class="hint">Built-in packs (official and unofficial) are dealt in ${LANGS[s.lang]}. Player-made packs stay in English, and so do 59 cards that were left untranslated.</p>` : ""}
     <label class="check ${host ? "" : "disabled"}"><input type="checkbox" id="set-private" data-setting="private" ${s.private ? "checked" : ""} ${off}>
       <span class="row-main"><span class="row-title">Private lobby</span><span class="row-sub">Hidden from open lobbies. Friends join with the code.</span></span></label>
     <div class="pack-summary"><span class="eyebrow">Card packs in this game</span>
