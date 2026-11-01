@@ -20,6 +20,11 @@ service cloud.firestore {
         allow read: if signedIn();
         allow write: if signedIn() && pid.matches('^p[a-z0-9]{12}$');
       }
+      // The game's draw and discard piles, kept out of the lobby document so players don't download them on every change.
+      match /deck/{doc} {
+        allow read: if signedIn();
+        allow write: if signedIn() && doc == 'piles';
+      }
     }
 
     // Open-lobby list shown on the home screen.
